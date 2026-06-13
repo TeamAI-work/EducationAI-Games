@@ -1,29 +1,44 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import Crossword from './Components/Grade1/Crossword'
-import SentenceStrip from './Components/Grade1/SentenceStrip'
 import Land from './Components/Land'
 import './App.css'
-import Hopper from './Components/Grade1/Hopper'
-import Distance from './Components/Grade1/Distance'
-import SentenceBuilder from './Components/Grade2/SentenceBuilder'
-import MissingWord from './Components/Grade2/MissingWord'
-import AreaBuilder from './Components/Grade2/AreaBuilder'
+import Crossword from './Components/Grade2/Crossword'
+import SentenceStrip from './Components/Grade2/SentenceStrip'
+import Hopper from './Components/Grade2/Hopper'
+import Distance from './Components/Grade2/Distance'
+import SentenceBuilder from './Components/Grade3/SentenceBuilder'
+import MissingWord from './Components/Grade3/MissingWord'
+import AreaBuilder from './Components/Grade3/AreaBuilder'
+import GridSplitter from './Components/Grade3/GridSplitter'
+import MissingSide from './Components/Grade3/MissingSide'
+import PictureMatch from './Components/Grade4/PictureMatch'
+import SequencingTiles from './Components/Grade4/SequencingTiles'
+import FractionPie from './Components/Grade4/FractionPie'
+import FractionCompare from './Components/Grade4/FractionCompare'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/*Grade 1*/}
-        <Route path='/' element={<Land />} />
-        <Route path='/grade1/crossword' element={<Crossword />} />
-        <Route path='/grade1/sentence-strip' element={<SentenceStrip />} />
-        <Route path='/grade1/hopper' element={<Hopper />} />
-        <Route path='/grade1/distance' element={<Distance />} />
-
         {/*Grade 2*/}
-        <Route path='/grade2/sentence-builder' element={<SentenceBuilder />} />
-        <Route path='/grade2/missing-word' element={<MissingWord />} />
-        <Route path='/grade2/area-builder' element={<AreaBuilder />} />
+        <Route path='/' element={<Land />} />
+        <Route path='/grade2/crossword' element={<Crossword />} />
+        <Route path='/grade2/sentence-strip' element={<SentenceStrip />} />
+        <Route path='/grade2/hopper' element={<Hopper />} />
+        <Route path='/grade2/distance' element={<Distance />} />
+
+        {/*Grade 3*/}
+        <Route path='/grade3/sentence-builder' element={<SentenceBuilder />} />
+        <Route path='/grade3/missing-word' element={<MissingWord />} />
+        <Route path='/grade3/area-builder' element={<AreaBuilder />} />
+        <Route path='/grade3/grid-splitter' element={<GridSplitter />} />
+        <Route path='/grade3/missing-side' element={<MissingSide />} />
+
+        {/* Grade 4 */}
+        <Route path='/grade4/picture-match' element={<PictureMatch />} />
+        <Route path='/grade4/sequencing-tiles' element={<SequencingTiles />} />
+        <Route path='/grade4/fraction-pie' element={<FractionPie />} />
+        <Route path='/grade4/fraction-compare' element={<FractionCompare />} />
+      
       </Routes>
     </BrowserRouter>
   )
