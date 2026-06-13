@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, HelpCircle, RotateCcw, ChevronRight, Tag, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, HelpCircle, RotateCcw, ChevronRight, Tag, Plus, Trash2, X, Check } from 'lucide-react'
 
 // ─── Level config ─────────────────────────────────────────────────────────────
 const LEVELS = [
@@ -194,7 +194,10 @@ export default function FractionPie() {
         const ok = slices === den && totalShaded === num
         setResult(ok ? 'correct' : 'wrong')
         setSubmitted(true)
-        if (ok) setScore(s => s + 100)
+        if (ok) {
+            setScore(s => s + 100)
+            setHint(false)
+        }
     }
 
     const isLast = levelIdx === LEVELS.length - 1 && chalIdx === level.challenges.length - 1
@@ -211,27 +214,28 @@ export default function FractionPie() {
         <div className="min-h-screen bg-[#eef4fb] flex flex-col font-sans select-none">
 
             {/* ── header ── */}
-            <header className="w-full px-4 py-2.5 flex items-center justify-between bg-white border-b border-slate-100 shadow-sm shrink-0">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => navigate(-1)}
-                        className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200">
-                        <ArrowLeft size={20} />
-                    </button>
-                    <span className="text-xl font-black text-blue-700">🥧 Fraction Pie</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end">
+            <header className="w-full px-4 py-2 flex items-center justify-between shrink-0">
+                <header className="px-4 py-2 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="p-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200"
+                        >
+                            <ArrowLeft size={30} />
+                        </button>
+                        <span className="font-bold text-blue-700 text-4xl">Fraction Pie</span>
+                    </div>
+                </header>
+                <div className="flex items-center gap-2">
+                    {/* level tabs in header */}
                     {LEVELS.map((l, i) => (
                         <button key={i} onClick={() => switchLevel(i)}
                             className={`py-1 px-3 rounded-full text-xs font-bold transition-colors border
-                ${i === levelIdx ? 'text-white border-transparent' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'}`}
-                            style={i === levelIdx ? { background: level.color } : {}}>
+                            ${i === levelIdx ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'}`}>
                             {l.label}
                         </button>
                     ))}
-                    <span className="text-xs text-slate-400 font-semibold ml-1">{chalIdx + 1}/{level.challenges.length}</span>
-                    <span className="text-xs text-amber-500 font-bold ml-1">⭐ {score}</span>
-                    <button onClick={() => setShowHelp(h => !h)}
-                        className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-500 ml-1">
+                    <button onClick={() => setShowHelp(h => !h)} className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-500">
                         <HelpCircle size={16} />
                     </button>
                 </div>
@@ -240,7 +244,7 @@ export default function FractionPie() {
             {/* ── body ── */}
             <div className="flex flex-col items-center flex-1 px-4 py-6 gap-6 overflow-y-auto">
 
-                {showHelp && (
+                {showHelp && !submitted && (
                     <div className="w-full max-w-5xl bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 text-sm text-blue-700">
                         <strong>How to play:</strong> Set the number of slices with the slider, then click any slice to shade or unshade it.
                         Add more pies with <strong>+ Add Pie</strong> for improper fractions or mixed numbers. Remove extra pies with the trash icon.
@@ -321,6 +325,10 @@ export default function FractionPie() {
                         <button onClick={() => reset()}
                             className="flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-2xl shadow-md transition-colors">
                             <RotateCcw size={14} /> Reset All
+                        </button>
+                        <button onClick={() => checkAnswer()}
+                            className="flex items-center justify-center gap-2 bg-green-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-2xl shadow-md transition-colors">
+                            <Check size={14} /> Check
                         </button>
 
 

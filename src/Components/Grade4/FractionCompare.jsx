@@ -262,7 +262,7 @@ export default function FractionCompare() {
           <button onClick={() => navigate(-1)} className="p-4 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200">
             <ArrowLeft size={30} />
           </button>
-          <span className="font-bold text-blue-700 text-3xl">Grid Splitter</span>
+          <span className="font-bold text-blue-700 text-3xl">Fraction Compare</span>
         </div>
         <div className="flex items-center gap-2">
           {LEVELS.map((l, i) => (
@@ -284,7 +284,7 @@ export default function FractionCompare() {
       {/* body */}
       <div className="flex flex-col items-center flex-1 px-4 py-6 gap-5 overflow-y-auto">
 
-        {showHelp && (
+        {showHelp && !submitted && (
           <div className="w-full max-w-4xl bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 text-sm text-blue-700">
             {level.autoFill
               ? <><strong>Level {levelIdx + 1}:</strong> Pies are built for you — study them, then pick &lt;, =, or &gt;.</>
