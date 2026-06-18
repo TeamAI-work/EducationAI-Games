@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Land from './Components/Land'
+import HeroHighlight from './Components/HeroHighlight'
 import './App.css'
 import Crossword from './Components/Grade2/Crossword'
 import SentenceStrip from './Components/Grade2/SentenceStrip'
@@ -14,13 +15,15 @@ import PictureMatch from './Components/Grade4/PictureMatch'
 import SequencingTiles from './Components/Grade4/SequencingTiles'
 import FractionPie from './Components/Grade4/FractionPie'
 import FractionCompare from './Components/Grade4/FractionCompare'
+import Hero from './Components/Hero'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path='/' element={<HeroHighlight />} />
         {/*Grade 2*/}
-        <Route path='/' element={<Land />} />
+        <Route path='/games' element={<Land />} />
         <Route path='/grade2/crossword' element={<Crossword />} />
         <Route path='/grade2/sentence-strip' element={<SentenceStrip />} />
         <Route path='/grade2/hopper' element={<Hopper />} />
@@ -38,7 +41,10 @@ function App() {
         <Route path='/grade4/sequencing-tiles' element={<SequencingTiles />} />
         <Route path='/grade4/fraction-pie' element={<FractionPie />} />
         <Route path='/grade4/fraction-compare' element={<FractionCompare />} />
-      
+
+        {/* Hero */}
+        <Route path='/hero' element={<Hero />} />
+
       </Routes>
     </BrowserRouter>
   )

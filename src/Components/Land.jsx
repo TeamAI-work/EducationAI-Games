@@ -1,4 +1,4 @@
-import { path } from "framer-motion/client"
+import { button, path } from "framer-motion/client"
 import { useNavigate } from "react-router-dom"
 
 export default function Land() {
@@ -80,6 +80,13 @@ export default function Land() {
             grade: 4,
             name: 'Fraction Compare',
             path: 'fraction-compare'
+        },
+        {
+            id: 14,
+            grade: 0,
+            type: "section",
+            name: 'Hero Page',
+            path: 'hero'
         },
 
     ]
