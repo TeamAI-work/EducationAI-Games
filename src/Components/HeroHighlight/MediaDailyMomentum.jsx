@@ -148,27 +148,6 @@ export default function MediaDailyMomentum({ reduced }) {
               }}
               transition={{ duration: 0.2 }}
             />
-
-            {/* Label (always minimalistic & visible when active or nearby) */}
-            {/* <AnimatePresence>
-              {node.isActive && (
-                <motion.text
-                  x={node.x}
-                  y={node.y + (node.y > 55 ? 10 : -8)}
-                  fill="#0369a1"
-                  fontSize={6.5}
-                  fontWeight="600"
-                  fontFamily="Inter, sans-serif"
-                  textAnchor="middle"
-                  initial={{ opacity: 0, y: node.y + (node.y > 55 ? 6 : -4) }}
-                  animate={{ opacity: 1, y: node.y + (node.y > 55 ? 10 : -8) }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {node.label}
-                </motion.text>
-              )}
-            </AnimatePresence> */}
           </g>
         ))}
 

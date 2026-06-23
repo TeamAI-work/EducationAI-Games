@@ -1,6 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Volume2, HelpCircle, Lightbulb, Delete, RotateCcw, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { Icon } from '@iconify/react'
+import PUZZLE from "./puzzle"
+
+
+const DATA = [
+    {
+        "word": "CAT",
+        "options": ["A", "B", "R", "T", "U", "C", "Z"],
+        "icon": ""
+    }
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function cellKey(r, c) { return `${r},${c}` }
@@ -26,19 +37,16 @@ function buildCells(words) {
 }
 
 function buildPool(words) {
-    // One tile per letter per word answer (not deduplicated by shared cells)
-    const letters = words.flatMap(w => w.answer.split(''))
+    // Derive pool from unique grid cells — shared intersection cells are NOT double-counted.
+    // Each cell needs exactly one tile, so pool size == number of cells + 1 distractor.
+    const cells = buildCells(words)
+    const letters = cells.map(c => c.answer)           // one letter per unique grid cell
     const answerSet = new Set(letters)
-    const distractor = 'BDFGHJKLMNPQSVWXYZ'.split('').find(l => !answerSet.has(l)) ?? 'X'
+    const distractor = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        .split('')
+        .find(l => !answerSet.has(l)) ?? 'Z'           // pick a letter not in any answer
     return shuffle([...letters, distractor])
 }
-
-// ─── Puzzle data — ONLY edit answers, clues and emojis ───────────────────────
-// startRow / startCol are computed automatically — do NOT set them manually
-const PUZZLE = [
-    { id: 1, label: '1 ACROSS', direction: 'across', answer: 'abc', clue: '"Meow! I like to nap."', emoji: '🐱' },
-    { id: 2, label: '2 DOWN', direction: 'down', answer: 'ybc', clue: '"Vroom! I have four wheels."', emoji: '🚗' },
-]
 
 // Auto-positions both words: word1 across at row 1 col 0,
 // word2 down intersects at the first shared letter.
@@ -64,31 +72,43 @@ function positionWords(puzzle) {
     ]
 }
 
-const WORDS = positionWords(PUZZLE)
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Crossword() {
-    const cells = useMemo(() => buildCells(WORDS), [])
+    const navigate = useNavigate()
+
+    // ── Puzzle progression ──────────────────────────────────────────────────────
+    const [puzzleIdx, setPuzzleIdx] = useState(0)
+
+    // Recompute grid whenever puzzle index changes
+    const words   = useMemo(() => positionWords(PUZZLE[puzzleIdx]), [puzzleIdx])
+    const cells   = useMemo(() => buildCells(words),  [words])
     const allRows = useMemo(() => [...new Set(cells.map(c => c.row))].sort((a, b) => a - b), [cells])
     const allCols = useMemo(() => [...new Set(cells.map(c => c.col))].sort((a, b) => a - b), [cells])
 
-    const navigate = useNavigate()
+    // ── Game state ──────────────────────────────────────────────────────────────
+    const [filled,   setFilled]   = useState({})
+    const [wrong,    setWrong]    = useState({})
+    const [used,     setUsed]     = useState([])
+    const [pool,     setPool]     = useState(() => buildPool(words))
+    const [activeId, setActiveId] = useState(words[0].id)
+    const [won,      setWon]      = useState(false)
+    const [hinted,   setHinted]   = useState(false)
 
-    const [filled, setFilled] = useState({})
-    const [wrong, setWrong] = useState({})
-    const [used, setUsed] = useState([])
-    const [pool, setPool] = useState(() => buildPool(WORDS))
-    const [activeId, setActiveId] = useState(WORDS[0].id)
-    const [won, setWon] = useState(false)
-    const [hinted, setHinted] = useState(false)
+    // Re-initialise game state whenever the puzzle changes
+    useEffect(() => {
+        setFilled({}); setWrong({}); setUsed([])
+        setPool(buildPool(words))
+        setActiveId(words[0].id)
+        setWon(false); setHinted(false)
+    }, [words]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const activeWord = WORDS.find(w => w.id === activeId)
-    const activeCells = cells
+    const activeWord   = words.find(w => w.id === activeId)
+    const activeCells  = cells
         .filter(c => c.wordIds.includes(activeId))
         .sort((a, b) => activeWord.direction === 'across' ? a.col - b.col : a.row - b.row)
 
     const nextEmpty = activeCells.find(c => !filled[cellKey(c.row, c.col)])
-    const hasFilled = activeCells.some(c => filled[cellKey(c.row, c.col)])
+    const hasFilled = activeCells.some(c =>  filled[cellKey(c.row, c.col)])
 
     function placeLetter(letter, poolIdx) {
         if (used.includes(poolIdx) || !nextEmpty) return
@@ -128,9 +148,13 @@ export default function Crossword() {
 
     function reset() {
         setFilled({}); setWrong({}); setUsed([])
-        setActiveId(WORDS[0].id)
-        setPool(buildPool(WORDS))
+        setActiveId(words[0].id)
+        setPool(buildPool(words))
         setWon(false); setHinted(false)
+    }
+
+    function nextPuzzle() {
+        setPuzzleIdx(idx => (idx + 1) % PUZZLE.length)
     }
 
     const SIZE = 64
@@ -161,7 +185,7 @@ export default function Crossword() {
 
             {/* Clue cards */}
             <section className="px-8 pt-4 pb-2 grid grid-cols-2 gap-4">
-                {WORDS.map(word => {
+                {words.map(word => {
                     const isActive = word.id === activeId
                     const color = word.direction === 'across' ? 'blue' : 'amber'
                     return (
@@ -174,7 +198,13 @@ export default function Crossword() {
                             <span className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-${color}-500`}>
                                 {word.label}
                             </span>
-                            <div className="mt-4 text-4xl w-14 shrink-0 text-center">{word.emoji}</div>
+                            <div className="mt-4 w-14 shrink-0 flex items-center justify-center">
+                                {word.icon ? (
+                                    <Icon icon={word.icon} width={44} height={44} />
+                                ) : (
+                                    <span className="text-4xl">{word.emoji}</span>
+                                )}
+                            </div>
                             <div className="mt-2">
                                 <p className="text-slate-600 text-sm">{word.clue}</p>
                                 {isActive && (
@@ -236,17 +266,41 @@ export default function Crossword() {
             {won && (
                 <div className="flex items-center justify-center z-50 mb-10">
                     <div className="bg-white rounded-3xl p-10 flex flex-col items-center gap-4 shadow-2xl max-w-fit w-full mx-4">
-                        <div className='flex justify-center items-center gap-8'>
+
+                        {/* Colored icons + labels for completed words */}
+                        <div className="flex gap-8 mb-1">
+                            {words.map(w => (
+                                <div key={w.id} className="flex flex-col items-center gap-1">
+                                    <Icon icon={w.icon} width={56} height={56} />
+                                    <span className="text-xs font-bold text-slate-500 tracking-widest">{w.answer}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex justify-center items-center gap-3">
                             <div className="text-4xl">🎉</div>
                             <h2 className="text-2xl font-black text-slate-800">Great Job!</h2>
                         </div>
-                        {/* <p className="text-slate-500 text-sm text-center">
-                            You spelled all the words!{hinted ? ' (with a hint)' : ' All by yourself!'}
-                        </p> */}
-                        {/* <div className="flex gap-4 text-4xl">{WORDS.map(w => <span key={w.id}>{w.emoji}</span>)}</div> */}
-                        <button onClick={reset} className="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold px-8 py-3 rounded-full transition-colors">
-                            Play Again
-                        </button>
+
+                        <p className="text-slate-400 text-sm">
+                            Puzzle {puzzleIdx + 1} of {PUZZLE.length} complete!
+                        </p>
+
+                        <div className="flex gap-3 mt-1">
+                            <button
+                                onClick={reset}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-full transition-colors"
+                            >
+                                Play Again
+                            </button>
+                            <button
+                                onClick={nextPuzzle}
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-8 py-3 rounded-full transition-colors"
+                            >
+                                Next Puzzle →
+                            </button>
+                        </div>
+
                     </div>
                 </div>
             )}
@@ -300,8 +354,6 @@ export default function Crossword() {
                     <Delete size={22} /> DELETE
                 </button>
             </footer>
-
-            {/* Win modal */}
 
         </div>
     )

@@ -87,7 +87,7 @@ export default function HeroHighlight() {
     <>
       <style>{HERO_STYLES}</style>
       <div
-        className="relative flex flex-col min-h-screen w-full"
+        className="relative select-none flex flex-col min-h-screen w-full"
         style={{ background: '#fafaf9', color: '#1c1917' }}
       >
         {/* ── Navigation ─────────────────────────────────────────── */}

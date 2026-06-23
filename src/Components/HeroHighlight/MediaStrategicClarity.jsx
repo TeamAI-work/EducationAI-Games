@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 const STRATEGIC_EDGES = [
   // Hub 1 (node 0) connections
@@ -107,7 +108,7 @@ export default function MediaStrategicClarity({ reduced }) {
               <circle
                 cx={n.x}
                 cy={n.y}
-                r={12}
+                r={3}
                 fill="transparent"
               />
               {/* Visible circle */}
@@ -140,9 +141,18 @@ export default function MediaStrategicClarity({ reduced }) {
           const textY = isTooCloseToTop ? selNode.y + selNode.r + 10 : selNode.y - selNode.r - 8;
 
           return (
-            <g key="tooltip" style={{ pointerEvents: 'none' }}>
+            <motion.g 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+            key="tooltip" style={{ pointerEvents: 'none', cursor: 'default' }}>
               {/* Tooltip Text */}
-              <text
+              <motion.text
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
                 x={textX}
                 y={textY}
                 fill="#182c41ff"
@@ -150,10 +160,11 @@ export default function MediaStrategicClarity({ reduced }) {
                 fontWeight="500"
                 fontFamily="Inter, sans-serif"
                 textAnchor="middle"
+                style={{ userSelect: 'none', cursor: 'default' }}
               >
                 {selNode.label}
-              </text>
-            </g>
+              </motion.text>
+            </motion.g>
           );
         })()}
       </svg>

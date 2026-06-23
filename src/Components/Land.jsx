@@ -93,6 +93,10 @@ export default function Land() {
     const nav = useNavigate()
     return (
         <div className="flex flex-col gap-5 justify-center items-center h-screen w-screen">
+            <div className="flex justify-center w-screen">
+                <div className="w-full h-px bg-linear-to-l from-gray-500 to-transparent" />
+                <div className="w-full h-px bg-linear-to-r from-gray-500 to-transparent" />
+            </div>
             Grade 2
             <div className=" flex justify-center gap-10">
 

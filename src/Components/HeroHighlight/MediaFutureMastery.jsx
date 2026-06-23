@@ -21,7 +21,7 @@ export default function MediaFutureMastery({ reduced }) {
         </p>
         <p style={{ fontSize: 10, fontFamily: 'monospace', lineHeight: 1.6, paddingLeft: 12 }}>
           <span style={{ color: '#94a3b8' }}>return </span>
-          <span style={{ color: '#34d399' }}>scholarly_ai</span>
+          <span style={{ color: '#34d399' }}>education_ai</span>
           <span style={{ color: '#e2e8f0' }}>.solve()</span>
           <span style={{ color: '#f8fafc', opacity: cursor ? 1 : 0 }}>|</span>
         </p>
