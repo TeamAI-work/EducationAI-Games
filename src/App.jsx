@@ -16,12 +16,23 @@ import SequencingTiles from './Components/Grade4/SequencingTiles'
 import FractionPie from './Components/Grade4/FractionPie'
 import FractionCompare from './Components/Grade4/FractionCompare'
 import Hero from './Components/Hero'
+import Count from './Components/Grade 1/Count'
+import Tracing from './Components/Grade 1/Tracing'
+import NumberArrange from './Components/Grade4/NumberArrange'
+import FormulaBuild from './Components/Chemistry/FormulaBuild'
+import PeriodicTable from './Components/Chemistry/PeriodicTable'
+import Lab from './Components/Chemistry/Lab/Lab'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path='/' element={<HeroHighlight />} />
+
+        {/* Grade 1 */}
+        <Route path='/grade1/count' element={<Count />} />
+        <Route path='/grade1/tracing' element={<Tracing />} />
+
         {/*Grade 2*/}
         <Route path='/games' element={<Land />} />
         <Route path='/grade2/crossword' element={<Crossword />} />
@@ -41,6 +52,12 @@ function App() {
         <Route path='/grade4/sequencing-tiles' element={<SequencingTiles />} />
         <Route path='/grade4/fraction-pie' element={<FractionPie />} />
         <Route path='/grade4/fraction-compare' element={<FractionCompare />} />
+        <Route path='/grade4/number-arrange' element={<NumberArrange />} />
+
+        {/* Chemistry */}
+        <Route path='/chemistry/formula-build' element={<FormulaBuild />} />
+        <Route path='/chemistry/periodic-table' element={<PeriodicTable />} />
+        <Route path='/chemistry/lab' element={<Lab />} />
 
         {/* Hero */}
         <Route path='/hero' element={<Hero />} />

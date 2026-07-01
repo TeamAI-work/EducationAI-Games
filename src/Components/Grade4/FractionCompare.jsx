@@ -274,7 +274,7 @@ export default function FractionCompare() {
               <span>Level</span> {i + 1}
             </button>
           ))}
-          
+
           <button onClick={() => setShowHelp(h => !h)} className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-500">
             <HelpCircle size={16} />
           </button>
@@ -293,34 +293,27 @@ export default function FractionCompare() {
             <span className="ml-2 text-blue-500">Both circles are the same size — a fair comparison!</span>
           </div>
         )}
-
-        {/* question header */}
-        <div className="flex flex-col items-center gap-3">
-          <span className="text-[10px] font-bold tracking-widest uppercase px-3 py-1 bg-slate-100 rounded-full"
-            style={{ color: level.color }}>{level.label} · {level.desc}</span>
-          <h2 className="text-2xl font-black text-slate-700">Which is larger?</h2>
-          <div className="flex items-center gap-6 bg-white rounded-2xl shadow-sm border border-slate-100 px-8 py-4">
-            <FractionDisplay num={problem.a.num} den={problem.a.den} color={PIE_A_COLOR} />
-            <span className="text-slate-300 text-3xl font-black">|</span>
-            <FractionDisplay num={problem.b.num} den={problem.b.den} color={PIE_B_COLOR} />
-          </div>
-          <div className="flex items-center gap-3 mt-1">
-            {['<', '=', '>'].map(sym => (
-              <SymbolBtn key={sym} sym={sym} selected={selected === sym}
-                correct={answer === sym} submitted={submitted}
-                onClick={() => !submitted && setSelected(sym)} />
-            ))}
+        <div className='flex flex-col gap-2.5'>
+          <div className="flex items-center flex-col gap-3">
+            <span className="text-[10px] font-bold tracking-widest uppercase px-3 py-1 bg-slate-100 rounded-full"
+              style={{ color: level.color }}>{level.label} · {level.desc}</span>
+            <h2 className="text-2xl font-black text-slate-700">Which is larger?</h2>
+            <div className="flex items-center gap-6 bg-white rounded-2xl shadow-sm border border-slate-100 px-8 py-4">
+              <FractionDisplay num={problem.a.num} den={problem.a.den} color={PIE_A_COLOR} />
+              <span className="text-slate-300 text-3xl font-black">|</span>
+              <FractionDisplay num={problem.b.num} den={problem.b.den} color={PIE_B_COLOR} />
+            </div>
           </div>
         </div>
 
-        {/* two pies */}
-        <div className="w-full max-w-4xl grid grid-cols-3 gap-5">
+        <div className='flex justify-center items-center gap-6'>
 
           {/* PIE A */}
+
           <div className={`bg-white rounded-3xl shadow-sm border-2 p-5 flex flex-col items-center gap-3 transition-all
             ${submitted && result === 'correct' && (answer === '>' || answer === '=') ? 'border-emerald-300'
-            : pieError && (pie.aSlices !== problem.a.den || pie.aShadedSet.size !== problem.a.num) ? 'border-amber-400'
-            : 'border-slate-100'}`}>
+              : pieError && (pie.aSlices !== problem.a.den || pie.aShadedSet.size !== problem.a.num) ? 'border-amber-400'
+                : 'border-slate-100'}`}>
             <div className="flex items-center justify-between w-full">
               <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">PIE A</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: PIE_A_COLOR }}>
@@ -357,26 +350,46 @@ export default function FractionCompare() {
               )}
             </div>
           </div>
+          <div className='flex gap-3 flex-col items-center justify-around'>
+            <div className="flex flex-col items-center gap-3">
 
-          <div className='flex items-center justify-center'>
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black border-2 shadow-sm transition-all
+              <div className="flex items-center gap-3 mt-1">
+                {['<', '=', '>'].map(sym => (
+                  <SymbolBtn key={sym} sym={sym} selected={selected === sym}
+                    correct={answer === sym} submitted={submitted}
+                    onClick={() => !submitted && setSelected(sym)} />
+                ))}
+              </div>
+            </div>
+
+            <div className='flex items-center justify-center'>
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black border-2 shadow-sm transition-all
               ${!selected
-                ? 'border-dashed border-slate-300 bg-white text-slate-300'
-                : submitted && result === 'correct'
-                  ? 'border-emerald-400 bg-emerald-50 text-emerald-600 scale-110'
-                  : submitted && result === 'wrong'
-                    ? 'border-red-400 bg-red-50 text-red-500'
-                    : 'border-blue-400 bg-blue-50 text-blue-600 scale-105'
-              }`}>
-              {selected ?? '?'}
+                  ? 'border-dashed border-slate-300 bg-white text-slate-300'
+                  : submitted && result === 'correct'
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-600 scale-110'
+                    : submitted && result === 'wrong'
+                      ? 'border-red-400 bg-red-50 text-red-500'
+                      : 'border-blue-400 bg-blue-50 text-blue-600 scale-105'
+                }`}>
+                {selected ?? '?'}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center mt-2">
+              <button onClick={reset}
+                className="flex items-center gap-1 text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors">
+                <RotateCcw size={13} /> Reset
+              </button>
             </div>
           </div>
+
 
           {/* PIE B */}
           <div className={`bg-white rounded-3xl shadow-sm border-2 p-5 flex flex-col items-center gap-3 transition-all
             ${submitted && result === 'correct' && (answer === '<' || answer === '=') ? 'border-emerald-300'
-            : pieError && (pie.bSlices !== problem.b.den || pie.bShadedSet.size !== problem.b.num) ? 'border-amber-400'
-            : 'border-slate-100'}`}>
+              : pieError && (pie.bSlices !== problem.b.den || pie.bShadedSet.size !== problem.b.num) ? 'border-amber-400'
+                : 'border-slate-100'}`}>
             <div className="flex items-center justify-between w-full">
               <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">PIE B</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: PIE_B_COLOR }}>
@@ -413,15 +426,12 @@ export default function FractionCompare() {
               )}
             </div>
           </div>
+
         </div>
 
+
         {/* show label + reset */}
-        <div className="flex items-center gap-4 w-full max-w-4xl">
-          <button onClick={reset}
-            className="flex items-center gap-1 text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors">
-            <RotateCcw size={13} /> Reset
-          </button>
-        </div>
+
 
         {/* pie build error */}
         {pieError && (

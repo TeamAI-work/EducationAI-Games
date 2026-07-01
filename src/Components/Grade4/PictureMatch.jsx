@@ -16,6 +16,7 @@ import RainSun      from '../../assets/PictureMatchImages/10_RainSun.png'
 import Rocket       from '../../assets/PictureMatchImages/11_Rocket.png'
 import Shapes       from '../../assets/PictureMatchImages/12_Shapes.png'
 import SixFlowers   from '../../assets/PictureMatchImages/13_SixFlowers.png'
+import Sunny        from '../../assets/PictureMatchImages/14_Sunny.png'
 
 // ─── Level configs ────────────────────────────────────────────────────────────
 // Each question: { text, correctIdx (0-based), options: [{img, label, distractor?}] }
@@ -120,13 +121,13 @@ const LEVELS = [
         text: 'Maya woke up early. She looked outside and saw gray clouds. She grabbed her umbrella before going out.',
         correctIdx: 1,
         options: [
-          { img: RainSun,     label: 'Bright sunny day',     distractor: 'Maya grabbed an umbrella — she expected rain, not sunshine.' },
+          { img: Sunny,     label: 'Bright sunny day',     distractor: 'Maya grabbed an umbrella — she expected rain, not sunshine.' },
           { img: RainSun,     label: 'Cloudy, rainy sky' },
           { img: BreakFast,   label: 'Maya eating breakfast', distractor: 'The passage focuses on the weather outside, not eating breakfast.' },
         ],
       },
       {
-        text: 'Tom prepared a tray with orange juice, toast, and a boiled egg. He was making breakfast for his mom.',
+        text: 'Tom prepared some cookies and some milk. He was preparing a surprise breakfast for his mom',
         correctIdx: 0,
         options: [
           { img: BreakFast,   label: 'A breakfast tray' },
@@ -177,6 +178,7 @@ export default function PictureMatch() {
   const [showHelp,   setShowHelp]   = useState(false)
   const [highlight,  setHighlight]  = useState(false)
   const [isReading,  setIsReading]  = useState(false)
+  const [scoreAnim,  setScoreAnim]  = useState(false)   // triggers +100 pop
   const readTimerRef = useRef(null)
 
   const level    = LEVELS[levelIdx]
@@ -208,7 +210,11 @@ export default function PictureMatch() {
     setSelected(idx)
     const correct = idx === question.correctIdx
     setResult(correct ? 'correct' : 'wrong')
-    if (correct) setScore(s => s + 100)
+    if (correct) {
+      setScore(s => s + 100)
+      setScoreAnim(false)
+      requestAnimationFrame(() => setScoreAnim(true))
+    }
   }
 
   function nextQuestion() {
@@ -265,6 +271,23 @@ export default function PictureMatch() {
   return (
     <div className="min-h-screen bg-[#f0f4fa] flex flex-col font-sans select-none">
 
+      {/* ── score pop keyframes ── */}
+      <style>{`
+        @keyframes score-pop {
+          0%   { opacity: 0; transform: translateY(0)   scale(0.6); }
+          40%  { opacity: 1; transform: translateY(-18px) scale(1.2); }
+          70%  { opacity: 1; transform: translateY(-24px) scale(1); }
+          100% { opacity: 0; transform: translateY(-32px) scale(0.9); }
+        }
+        .score-pop { animation: score-pop 0.9s ease forwards; }
+        @keyframes score-bump {
+          0%,100% { transform: scale(1); }
+          40%      { transform: scale(1.18); }
+          70%      { transform: scale(0.94); }
+        }
+        .score-bump { animation: score-bump 0.45s ease; }
+      `}</style>
+
       {/* ── header ── */}
       <header className="w-full px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -291,6 +314,28 @@ export default function PictureMatch() {
               {l.label}
             </button>
           ))}
+
+          {/* ── live score badge ── */}
+          <div className="relative flex items-center ml-2">
+            <div
+              key={score}                             // re-mount triggers bump
+              className="score-bump flex items-center gap-1.5 bg-amber-50 border border-amber-200
+                         text-amber-700 font-black text-sm px-3 py-1 rounded-full select-none"
+            >
+              ⭐ {score}
+            </div>
+            {/* floating +100 */}
+            {scoreAnim && (
+              <span
+                className="score-pop absolute -top-1 left-1/2 -translate-x-1/2
+                           text-emerald-600 font-black text-xs pointer-events-none whitespace-nowrap"
+                onAnimationEnd={() => setScoreAnim(false)}
+              >
+                +100
+              </span>
+            )}
+          </div>
+
           <button
             onClick={() => setShowHelp(h => !h)}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-500 ml-1"
@@ -407,9 +452,12 @@ export default function PictureMatch() {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-emerald-700 font-bold text-sm">All done!</span>
+                <div className="text-right">
+                  <p className="text-emerald-700 font-black text-sm">All done! 🎉</p>
+                  <p className="text-emerald-600 text-xs font-bold">Final Score: ⭐ {score} pts</p>
+                </div>
                 <button
-                  onClick={() => { setLevelIdx(0); setQIdx(0); setSelected(null); setResult(null); setScore(0) }}
+                  onClick={() => { setLevelIdx(0); setQIdx(0); setSelected(null); setResult(null); setScore(0); setScoreAnim(false) }}
                   className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold px-4 py-2 rounded-full shadow-md transition-colors text-sm"
                 >
                   <RotateCcw size={14} /> Play Again

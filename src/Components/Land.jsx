@@ -88,11 +88,63 @@ export default function Land() {
             name: 'Hero Page',
             path: 'hero'
         },
-
+        {
+            id: 15,
+            grade: 1,
+            name: 'Count',
+            path: 'count'
+        },
+        {
+            id: 16,
+            grade: 1,
+            name: 'Tracing',
+            path: 'tracing'
+        },
+        {
+            id: 17,
+            grade: 4,
+            name: 'Number Arrange',
+            path: 'number-arrange'
+        },
+        {
+            id: 18,
+            grade: "subjects",
+            name: 'Periodic Table',
+            path: 'chemistry/periodic-table'
+        },
+        {
+            id: 19,
+            grade: "subjects",
+            name: 'Lab',
+            path: 'chemistry/lab'
+        }
     ]
+
+
     const nav = useNavigate()
+
+
     return (
         <div className="flex flex-col gap-5 justify-center items-center h-screen w-screen">
+            <div className="flex justify-center w-screen">
+                <div className="w-full h-px bg-linear-to-l from-gray-500 to-transparent" />
+                <div className="w-full h-px bg-linear-to-r from-gray-500 to-transparent" />
+            </div>
+            Grade 1
+            <div className=" flex justify-center gap-10">
+
+                {
+                    pages.map((page) => (
+                        page.grade == 1 &&
+                        <button
+                            key={page.id}
+                            className="rounded-xl bg-blue-400 text-black font-bold px-5 py-3 text-2xl"
+                            onClick={() => nav(`/grade${page.grade}/${page.path}`)}>
+                            {page.name}
+                        </button>
+                    ))
+                }
+            </div>
             <div className="flex justify-center w-screen">
                 <div className="w-full h-px bg-linear-to-l from-gray-500 to-transparent" />
                 <div className="w-full h-px bg-linear-to-r from-gray-500 to-transparent" />
@@ -144,6 +196,24 @@ export default function Land() {
                             key={page.id}
                             className="rounded-xl bg-blue-400 text-black font-bold px-5 py-3 text-2xl"
                             onClick={() => nav(`/grade${page.grade}/${page.path}`)}>
+                            {page.name}
+                        </button>
+                    ))
+                }
+            </div>
+            <div className="flex justify-center w-screen">
+                <div className="w-full h-px bg-linear-to-l from-gray-500 to-transparent" />
+                <div className="w-full h-px bg-linear-to-r from-gray-500 to-transparent" />
+            </div>
+            Subjects
+            <div className=" flex justify-center gap-10">
+                {
+                    pages.map((page) => (
+                        page.grade == "subjects" &&
+                        <button
+                            key={page.id}
+                            className="rounded-xl bg-blue-400 text-black font-bold px-5 py-3 text-2xl"
+                            onClick={() => nav(`/${page.path}`)}>
                             {page.name}
                         </button>
                     ))
