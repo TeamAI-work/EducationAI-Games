@@ -22,6 +22,9 @@ import NumberArrange from './Components/Grade4/NumberArrange'
 import FormulaBuild from './Components/Chemistry/FormulaBuild'
 import PeriodicTable from './Components/Chemistry/PeriodicTable'
 import Lab from './Components/Chemistry/Lab/Lab'
+import PhysicsLab from './Components/Physics/PhysicsLab'
+import FrictionSimulator from './Components/Physics/FrictionSimulator/FrictionSimulator'
+import SoundWaveTank from './Components/Physics/SoundWave/SoundWaveTank'
 
 function App() {
   return (
@@ -55,9 +58,13 @@ function App() {
         <Route path='/grade4/number-arrange' element={<NumberArrange />} />
 
         {/* Chemistry */}
-        <Route path='/chemistry/formula-build' element={<FormulaBuild />} />
         <Route path='/chemistry/periodic-table' element={<PeriodicTable />} />
         <Route path='/chemistry/lab' element={<Lab />} />
+
+        {/* Physics */}
+        <Route path='/physics/lab'      element={<PhysicsLab />}/>
+        <Route path='/physics/friction' element={<FrictionSimulator />}/>
+        <Route path='/physics/sound'   element={<SoundWaveTank />}/>
 
         {/* Hero */}
         <Route path='/hero' element={<Hero />} />
