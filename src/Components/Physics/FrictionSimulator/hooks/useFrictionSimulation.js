@@ -1,10 +1,10 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { G, DT, BLOCK_SIZE } from "../constants/frictionConstants";
+import { G, DT, BLOCK_SIZE, CLR } from "../constants/frictionConstants";
 import {
   getRampGeometry, blockCentre,
-  clearCanvas, drawDotGrid, drawGround, drawRamp,
+  clearCanvas, drawDotGrid, drawGroundLine, drawRamp,
   drawAngleArc, drawBlock, drawForceVectors,
-  drawSlipAngleLine, drawFrictionUtilBar,
+  drawSlipAngleLine, drawFrictionUtilBar, drawForceReadout,
 } from "../utils/frictionDrawing";
 
 // ─── Simulation state machine ─────────────────────────────────────────────────
@@ -22,11 +22,12 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
 
   // Physics state
   const simRef = useRef({
-    d:       0,     // distance travelled from top of ramp (metres)
-    v:       0,     // velocity along ramp (m/s)
-    a:       0,     // acceleration (m/s²)
-    t:       0,     // elapsed time (s)
-    state:   STATES.IDLE,
+    d:        0,     // distance travelled from top of ramp (metres)
+    v:        0,     // velocity along ramp (m/s)
+    a:        0,     // acceleration (m/s²)
+    t:        0,     // elapsed time (s)
+    maxSpeed: 0,     // peak speed recorded this run
+    state:    STATES.IDLE,
   });
 
   // Mirror of control inputs (written by React state effects, read by RAF)
@@ -34,6 +35,7 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
   const muSRef      = useRef(0.50);
   const muKRef      = useRef(0.30);
   const massRef     = useRef(5);
+  const rampLenRef  = useRef(0.75);  // fraction of canvas min(W,H)
   const showVecRef  = useRef(true);
   const showGridRef = useRef(true);
   const sizeRef     = useRef(canvasSize);
@@ -43,14 +45,21 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
 
   // ── React UI state (updated ~10 fps via interval) ─────────────────────────
   const [telemetry, setTelemetry] = useState({
-    state:         STATES.IDLE,
-    speed:         0,
-    acceleration:  0,
-    elapsed:       0,
-    fGravity:      0,
-    fNormal:       0,
-    fFriction:     0,
-    frictionRatio: 0,   // fParallel / (µs * fNormal)  → 1 = at slip limit
+    state:          STATES.IDLE,
+    speed:          0,
+    maxSpeed:       0,
+    acceleration:   0,
+    elapsed:        0,
+    distance:       0,
+    fGravity:       0,
+    fNormal:        0,
+    fFriction:      0,
+    fNet:           0,     // net force along slope (N)
+    frictionRatio:  0,
+    kineticEnergy:  0,     // ½mv² (J)
+    workByGravity:  0,     // mg·sin(θ)·d (J)
+    workByFriction: 0,     // µk·mg·cos(θ)·d (J) — energy lost to heat
+    frictionHeat:   0,     // same as workByFriction, renamed for clarity
   });
 
   // ── Canvas resize seed ────────────────────────────────────────────────────
@@ -95,6 +104,7 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     s.a    = accel;
     s.v   += accel * DT;
     if (s.v < 0) s.v = 0;
+    if (s.v > s.maxSpeed) s.maxSpeed = s.v;
     s.d   += s.v * DT;
     s.t   += DT;
 
@@ -115,37 +125,95 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     const H   = canvas.height;
 
     clearCanvas(ctx, W, H);
+
+    const frac   = rampLenRef.current;
+    const deg    = angleRef.current;
+    const rad0   = (deg * Math.PI) / 180;
+
+    // ── 1. Compute raw geometry at natural origin (0,0) ───────────────────────
+    // We treat the ramp origin as (0,0) in scene-space, then offset to center.
+    const rampLen  = Math.min(W, H) * frac;
+    const cosA     = Math.cos(rad0);
+    const sinA     = Math.sin(rad0);
+
+    // Canvas-pixel margin reserved on every side.
+    // Larger PAD → smaller scene → less zoom. 110px gives comfortable breathing room.
+    const PAD_PX = 110;
+
+    // Key scene-space points
+    const tipX  =  rampLen * cosA;
+    const tipY  = -rampLen * sinA;
+    const baseX =  tipX;
+    const baseY =  0;
+
+    // ── 2. First-pass scale (no vecPad yet) to estimate pixels-per-scene-unit ─
+    // This lets us convert "how many canvas-px do arrows need" → scene-units.
+    const rawSceneW    = baseX + 1;           // rough width without padding
+    const rawSceneH    = Math.abs(tipY) + 1;  // rough height without padding
+    const roughScaleX  = (W - PAD_PX * 2) / rawSceneW;
+    const roughScaleY  = (H - PAD_PX * 2) / rawSceneH;
+    const roughScale   = Math.min(roughScaleX, roughScaleY, 2.2); // cap at 2.2× for sanity
+
+    // Arrow labels need ~80 canvas-px clearance; convert to scene-units
+    const arrowCanvasPx = 80;
+    const vecPad        = arrowCanvasPx / roughScale;
+
+    // ── 3. Final scene bounding box ───────────────────────────────────────────
+    const sceneLeft   = -vecPad;
+    const sceneRight  = Math.max(baseX, tipX) + vecPad;
+    const sceneTop    = tipY - vecPad;
+    const sceneBottom = vecPad * 0.4;
+
+    const sceneW = sceneRight - sceneLeft;
+    const sceneH = sceneBottom - sceneTop;
+
+    // ── 4. Final scale — fills canvas minus PAD, capped at roughScale ceiling ─
+    const scaleX    = (W - PAD_PX * 2) / sceneW;
+    const scaleY    = (H - PAD_PX * 2) / sceneH;
+    const autoScale = Math.min(scaleX, scaleY, 2.0); // cap at 2× so it never gets huge
+
+    // ── 5. Center the scaled scene in the canvas ──────────────────────────────
+    const scaledW = sceneW * autoScale;
+    const scaledH = sceneH * autoScale;
+    const centerX = (W - scaledW) / 2 - sceneLeft * autoScale;
+    const centerY = (H - scaledH) / 2 - sceneTop  * autoScale;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(autoScale, autoScale);
+
+    // ── 4. Build geometry relative to scene origin (0,0) ─────────────────────
+    const origin = { x: 0,    y: 0    };
+    const tip    = { x: tipX, y: tipY };
+    const base   = { x: baseX, y: baseY };
+
+    // ── 5. Draw everything in scene-space ─────────────────────────────────────
     if (showGridRef.current) drawDotGrid(ctx, W, H);
-    drawGround(ctx, W, H);
 
-    const angleDeg = angleRef.current;
-    const geo      = getRampGeometry(W, H, angleDeg);
-    const { origin, tip, base, rampLen, cosA, sinA, rad } = geo;
-
-    // Slip angle guide
-    const slipDeg = (Math.atan(muSRef.current) * 180) / Math.PI;
-    drawSlipAngleLine(ctx, origin, W, slipDeg, angleDeg);
+    // Ground line — spans the full visible scene width
+    const gW = sceneRight + vecPad;
+    drawGroundLine(ctx, sceneLeft - vecPad, gW, 0);
 
     drawRamp(ctx, origin, tip, base);
-    drawAngleArc(ctx, origin, rad, angleDeg);
+    drawAngleArc(ctx, origin, rad0, deg, autoScale);
 
-    // Block position
-    const s       = simRef.current;
-    // d is in "ramp pixels" — we work in pixel-space directly (no separate
-    // metres scale here; 1 px = 1 px for this sim, physics uses G/mass ratios)
-    const pixelsPerMetre = rampLen / 10; // map ramp to 10 "metres"
-    const dPx     = s.d * pixelsPerMetre;
+    // Slip angle guide — drawn AFTER the ramp so it is never hidden by the filled triangle.
+    // Use gW * 1.1 so the line just extends past the ramp's right edge without going too far.
+    const slipDeg = (Math.atan(muSRef.current) * 180) / Math.PI;
+    drawSlipAngleLine(ctx, origin, gW * 1.1, slipDeg, deg, autoScale);
+
+    const s              = simRef.current;
+    const pixelsPerMetre = rampLen / 10;
+    const dPx            = s.d * pixelsPerMetre;
     const { x: cx, y: cy } = blockCentre(tip, cosA, sinA, rampLen, dPx);
 
-    // Forces for vectors
-    const tRad    = rad;
-    const m       = massRef.current;
-    const muS     = muSRef.current;
-    const muK     = muKRef.current;
-    const fNormal   = m * G * Math.cos(tRad);
-    const fParallel = m * G * Math.sin(tRad);
+    const m          = massRef.current;
+    const muS        = muSRef.current;
+    const muK        = muKRef.current;
+    const fNormal    = m * G * Math.cos(rad0);
+    const fParallel  = m * G * Math.sin(rad0);
     const fStaticLim = muS * fNormal;
-    let fFriction = 0;
+    let   fFriction  = 0;
     if (s.state === STATES.STATIC || s.state === STATES.IDLE) {
       fFriction = Math.min(fParallel, fStaticLim);
     } else if (s.state === STATES.KINETIC) {
@@ -159,9 +227,23 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
       frictionRatio: fStaticLim > 0 ? fParallel / fStaticLim : 0,
     };
 
-    drawForceVectors(ctx, cx, cy, rad, cosA, sinA, forces, showVecRef.current);
-    drawBlock(ctx, cx, cy, rad, s.state === STATES.KINETIC);
+    drawForceVectors(ctx, cx, cy, rad0, cosA, sinA, forces, showVecRef.current, autoScale);
+    drawBlock(ctx, cx, cy, rad0, s.state === STATES.KINETIC);
+
+    ctx.restore();
+
+    // ── 6. Fixed overlays — drawn AFTER restore so they ignore scale/translate ─
     drawFrictionUtilBar(ctx, W, H, forces.frictionRatio);
+    drawForceReadout(ctx, W, H, forces, deg, s.state);
+
+    if (autoScale < 0.68) {
+      ctx.save();
+      ctx.font      = "bold 10px monospace";
+      ctx.fillStyle = CLR.muted;
+      ctx.textAlign = "left";
+      ctx.fillText(`zoom: ${Math.round(autoScale * 100)}%`, 10, H - 8);
+      ctx.restore();
+    }
   }, [canvasRef]);
 
   // ─── RAF physics + draw loop (runs while sim is active) ──────────────────
@@ -174,7 +256,7 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     if (!canvas) return;
     const W   = canvas.width;
     const H   = canvas.height;
-    const geo = getRampGeometry(W, H, angleRef.current);
+    const geo = getRampGeometry(W, H, angleRef.current, rampLenRef.current);
     const pixelsPerMetre = geo.rampLen / 10;
     const maxD = (geo.rampLen - BLOCK_SIZE) / pixelsPerMetre;
 
@@ -186,7 +268,14 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
       s.v     = 0;
       s.state = STATES.DONE;
       drawFrame();
-      setTelemetry(prev => ({ ...prev, state: STATES.DONE, speed: 0, elapsed: s.t, ...forces }));
+      setTelemetry(prev => ({
+        ...prev,
+        state:    STATES.DONE,
+        speed:    0,
+        elapsed:  s.t,
+        maxSpeed: s.maxSpeed,
+        ...forces,
+      }));
       // Resume idle loop for continued redraws (angle can still change)
       idleRafRef.current = requestAnimationFrame(idleLoopRef.current);
       return;
@@ -229,16 +318,30 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
       const fPar    = m * G * Math.sin(tRad);
       const fSLim   = muS * fNormal;
       const fFric   = s.state === STATES.KINETIC ? muK * fNormal : Math.min(fPar, fSLim);
+      const fNet    = s.state === STATES.KINETIC ? fPar - fFric : 0;
+
+      // d is in "ramp metres" (rampLen / 10 px per metre, so d in metres already)
+      const d             = s.d;
+      const kineticEnergy = 0.5 * m * s.v * s.v;
+      const workByGravity = fPar * d;
+      const workByFric    = fFric * d;
 
       setTelemetry({
-        state:         s.state,
-        speed:         s.v,
-        acceleration:  s.a,
-        elapsed:       s.t,
-        fGravity:      m * G,
+        state:          s.state,
+        speed:          s.v,
+        maxSpeed:       s.maxSpeed,
+        acceleration:   s.a,
+        elapsed:        s.t,
+        distance:       d,
+        fGravity:       m * G,
         fNormal,
-        fFriction:     fFric,
-        frictionRatio: fSLim > 0 ? fPar / fSLim : 0,
+        fFriction:      fFric,
+        fNet,
+        frictionRatio:  fSLim > 0 ? fPar / fSLim : 0,
+        kineticEnergy,
+        workByGravity,
+        workByFriction: workByFric,
+        frictionHeat:   workByFric,
       });
     }, 100);
     return () => clearInterval(id);
@@ -257,7 +360,7 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
 
     // If idle/done — fresh start
     if (s.state === STATES.IDLE || s.state === STATES.DONE) {
-      s.d = 0; s.v = 0; s.a = 0; s.t = 0;
+      s.d = 0; s.v = 0; s.a = 0; s.t = 0; s.maxSpeed = 0;
     }
 
     // Determine initial state
@@ -287,10 +390,12 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     if (rafRef.current)     cancelAnimationFrame(rafRef.current);
     if (idleRafRef.current) cancelAnimationFrame(idleRafRef.current);
 
-    simRef.current = { d: 0, v: 0, a: 0, t: 0, state: STATES.IDLE };
+    simRef.current = { d: 0, v: 0, a: 0, t: 0, maxSpeed: 0, state: STATES.IDLE };
     setTelemetry({
-      state: STATES.IDLE, speed: 0, acceleration: 0, elapsed: 0,
-      fGravity: 0, fNormal: 0, fFriction: 0, frictionRatio: 0,
+      state: STATES.IDLE, speed: 0, maxSpeed: 0, acceleration: 0, elapsed: 0,
+      distance: 0, fGravity: 0, fNormal: 0, fFriction: 0, fNet: 0,
+      frictionRatio: 0, kineticEnergy: 0, workByGravity: 0,
+      workByFriction: 0, frictionHeat: 0,
     });
 
     idleRafRef.current = requestAnimationFrame(idleLoopRef.current);
@@ -299,11 +404,12 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
   // ─── Setters that update both React state and refs ────────────────────────
   // Angle / friction params are set from outside via these; the ref mirrors
   // update immediately so the next RAF frame picks them up.
-  const setAngleRef    = useCallback((v) => { angleRef.current   = v; }, []);
-  const setMuSRef      = useCallback((v) => { muSRef.current     = v; }, []);
-  const setMuKRef      = useCallback((v) => { muKRef.current     = v; }, []);
-  const setMassRef     = useCallback((v) => { massRef.current    = v; }, []);
-  const setShowVecRef  = useCallback((v) => { showVecRef.current = v; }, []);
+  const setAngleRef    = useCallback((v) => { angleRef.current    = v; }, []);
+  const setMuSRef      = useCallback((v) => { muSRef.current      = v; }, []);
+  const setMuKRef      = useCallback((v) => { muKRef.current      = v; }, []);
+  const setMassRef     = useCallback((v) => { massRef.current     = v; }, []);
+  const setRampLenRef  = useCallback((v) => { rampLenRef.current  = v; }, []);
+  const setShowVecRef  = useCallback((v) => { showVecRef.current  = v; }, []);
   const setShowGridRef = useCallback((v) => { showGridRef.current = v; }, []);
 
   return {
@@ -313,11 +419,11 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     handleRun,
     handlePause,
     handleReset,
-    // Ref-setters (call these whenever React state changes)
     syncAngle:    setAngleRef,
     syncMuS:      setMuSRef,
     syncMuK:      setMuKRef,
     syncMass:     setMassRef,
+    syncRampLen:  setRampLenRef,
     syncShowVec:  setShowVecRef,
     syncShowGrid: setShowGridRef,
   };

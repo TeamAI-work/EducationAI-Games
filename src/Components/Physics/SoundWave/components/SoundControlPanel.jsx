@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Play, Pause, RotateCcw, Radio, Wind, Zap, Thermometer } from "lucide-react";
+import { Radio, Wind, Thermometer, Zap } from "lucide-react";
 import { CLR, MEDIUM_PRESETS, BOUNDARY, computeSpeedOfSound } from "../constants/soundConstants";
 import SoundSection   from "./SoundSection";
 import SoundSliderRow from "./SoundSliderRow";
@@ -31,8 +31,8 @@ export default function SoundControlPanel({
   const isRigid    = boundary === BOUNDARY.RIGID;
   const preset     = MEDIUM_PRESETS[medium];
   const liveV      = computeSpeedOfSound(medium, temp);
-  const tempMin    = preset?.tMin ?? -50;
-  const tempMax    = preset?.tMax ?? 500;
+  const tempMin    = -50;
+  const tempMax    = 500;
 
   return (
     <div
@@ -40,61 +40,6 @@ export default function SoundControlPanel({
       style={{ borderColor: CLR.border, background: CLR.panel }}
     >
       <div className="flex flex-col gap-3 p-4">
-
-        {/* ── Transport buttons ── */}
-        <div className="flex gap-2">
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onPlay}
-            disabled={running}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold"
-            style={{
-              background: running ? "rgba(0,229,255,0.1)" : CLR.wave,
-              color:      running ? CLR.wave : "#0d1117",
-              border:     running ? `1px solid ${CLR.wave}` : "none",
-              opacity:    running ? 0.65 : 1,
-            }}
-          >
-            <Play size={14} fill="currentColor" />
-            {running ? "Transmitting" : "Transmit"}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onPause} disabled={!running}
-            className="flex items-center justify-center px-3 py-2 rounded-lg border"
-            style={{ borderColor: CLR.border, color: CLR.text, background: "transparent", opacity: !running ? 0.35 : 1 }}
-          >
-            <Pause size={14} />
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onReset}
-            className="flex items-center justify-center px-3 py-2 rounded-lg border"
-            style={{ borderColor: CLR.border, color: CLR.muted, background: "transparent" }}
-          >
-            <RotateCcw size={14} />
-          </motion.button>
-        </div>
-
-        {/* SONAR fire button */}
-        {/* {onFireSonar && (
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}
-            onClick={onFireSonar}
-            disabled={!running}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold border"
-            style={{
-              borderColor: CLR.sonar,
-              color:       CLR.sonar,
-              background:  "rgba(105,255,71,0.07)",
-              opacity:     !running ? 0.4 : 1,
-            }}
-          >
-            <Zap size={14} fill="currentColor" /> Fire SONAR Pulse
-          </motion.button>
-        )} */}
 
         {/* ── 1. Wave Generator Setup ── */}
         <SoundSection
@@ -137,7 +82,7 @@ export default function SoundControlPanel({
           <div className="pt-3 flex flex-col gap-4">
 
             {/* Medium buttons */}
-            <div className="flex flex-col gap-2">
+            {/* <div className="flex flex-col gap-2">
               <span className="flex items-center gap-1 text-xs font-medium" style={{ color: CLR.muted }}>
                 Speed of Sound
                 <InfoTooltip text={INFO.medium} />
@@ -159,10 +104,10 @@ export default function SoundControlPanel({
                   </button>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Divider */}
-            <div className="h-px" style={{ background: CLR.border }} />
+            {/* <div className="h-px" style={{ background: CLR.border }} /> */}
 
             {/* Temperature slider */}
             <div className="flex flex-col gap-2">
@@ -214,25 +159,6 @@ export default function SoundControlPanel({
             />
           </div>
         </SoundSection>
-
-        {/* ── Legend ── */}
-          {/* <div className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: CLR.border }}>
-            <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>
-              Graph Legend
-            </p>
-            {[
-              { color: CLR.wave,   label: "Your wave (cyan)" },
-              { color: CLR.target, label: "Target silhouette (Mode 1)" },
-              { color: CLR.noise,  label: "Noise wave (Mode 2)" },
-              { color: CLR.sonar,  label: "SONAR pulse / echo" },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2 text-xs" style={{ color: CLR.muted }}>
-                <span className="w-4 h-0.5 rounded-full shrink-0" style={{ background: item.color }} />
-                {item.label}
-              </div>
-            ))}
-          </div> */}
-
       </div>
     </div>
   );

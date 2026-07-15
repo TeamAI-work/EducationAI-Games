@@ -169,56 +169,6 @@ export default function ControlsSidebar({
             </AnimatePresence>
           </div>
         </Section>
-
-        {/* ── 3. Visualization Toggles ── */}
-        <Section
-          title="Visualization"
-          icon={<Atom size={14} style={{ color: CLR.neon }} />}
-        >
-          <div className="pt-3 flex flex-col gap-3">
-            <Toggle label="Show Vector Overlays" value={showVectors} onChange={setShowVectors} />
-            <Toggle label="Show Grid" value={showGrid} onChange={setShowGrid} />
-            <Toggle label="Retain Flight Trails" value={retainTrails} onChange={setRetainTrails} />
-            {retainTrails && trailCount > 0 && (
-              <p className="text-[10px]" style={{ color: CLR.muted }}>
-                {trailCount} trail{trailCount > 1 ? "s" : ""} retained (max 5)
-              </p>
-            )}
-          </div>
-        </Section>
-
-        {/* ── Vector legend ── */}
-        <div
-          className="rounded-lg border p-3 flex flex-col gap-2"
-          style={{ borderColor: CLR.border }}
-        >
-          <p
-            className="text-[10px] uppercase tracking-widest font-semibold"
-            style={{ color: CLR.muted }}
-          >
-            Vector Legend
-          </p>
-          {[
-            { color: CLR.velTotal, label: "Net Velocity (v)" },
-            { color: CLR.velX, label: "Horizontal (vx)" },
-            { color: CLR.velY, label: "Vertical (vy)" },
-            { color: CLR.neon, label: "Flight Path" },
-            { color: CLR.apex, label: "Apex Marker" },
-          ].map(item => (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 text-xs"
-              style={{ color: CLR.muted }}
-            >
-              <span
-                className="w-4 h-0.5 rounded-full shrink-0"
-                style={{ background: item.color }}
-              />
-              {item.label}
-            </div>
-          ))}
-        </div>
-
       </div>
     </div>
   );

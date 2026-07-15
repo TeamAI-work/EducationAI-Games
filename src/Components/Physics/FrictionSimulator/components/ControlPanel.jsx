@@ -1,9 +1,42 @@
-import { motion } from "framer-motion";
-import { Play, Pause, RotateCcw, Triangle, Layers, Eye } from "lucide-react";
+import { Triangle, Layers, Eye } from "lucide-react";
 import { CLR, SURFACE_PRESETS } from "../constants/frictionConstants";
-import FrictionSection  from "./FrictionSection";
+import FrictionSection from "./FrictionSection";
 import FrictionSliderRow from "./FrictionSliderRow";
-import FrictionToggle   from "./FrictionToggle";
+import FrictionToggle from "./FrictionToggle";
+import FrictionInfoTooltip from "./FrictionInfoTooltip";
+
+// ─── Per-parameter info text ──────────────────────────────────────────────────
+const INFO = {
+  angle:
+    "Incline angle (θ) is the slope of the ramp measured from the horizontal. " +
+    "It directly controls the gravity component pulling the block down the slope: " +
+    "F_parallel = mg·sin(θ). The block starts to slip when θ exceeds the critical slip angle θc = arctan(µs).",
+  mass:
+    "Block mass (m) scales all forces equally — gravity, normal force, and friction all grow with mass. " +
+    "Because acceleration = (F_parallel − F_friction) / m, the net effect on acceleration is mass-independent " +
+    "when there is no air resistance. Changing mass still affects the raw Newton values shown in the vectors.",
+  rampLength:
+    "Ramp length sets the physical distance the block travels before reaching the bottom. " +
+    "A longer ramp gives the block more time to accelerate and reach higher speeds. " +
+    "It does not affect the forces or acceleration — only the travel distance and time to reach the ground.",
+  muS:
+    "Static friction coefficient (µs) defines the maximum grip between the surfaces before the block begins to slip. " +
+    "The block stays still as long as the gravitational pull F_parallel ≤ µs × F_normal. " +
+    "The critical slip angle is θc = arctan(µs) — shown as the dashed guide line on the canvas.",
+  muK:
+    "Kinetic friction coefficient (µk) is the friction once the block is already sliding. " +
+    "It is always ≤ µs — surfaces grip less once motion has started (Coulomb's Law). " +
+    "Net acceleration = (mg·sin θ − µk·mg·cos θ) / m = g(sin θ − µk·cos θ).",
+  vectors:
+    "Force vector overlays draw three arrows directly from the block's centre of mass: " +
+    "Red = Weight (mg) acting straight down, " +
+    "Teal = Normal force perpendicular to the slope surface, " +
+    "Amber = Friction force opposing motion up the slope. " +
+    "Arrow lengths scale proportionally to Newton values.",
+  grid:
+    "Toggles the background dot grid. The grid helps visually estimate distances and angles " +
+    "on the canvas but has no effect on the simulation physics.",
+};
 
 /**
  * Right-hand control sidebar.
@@ -12,7 +45,8 @@ import FrictionToggle   from "./FrictionToggle";
 export default function ControlPanel({
   // Ramp geometry
   angle, setAngle,
-  mass,  setMass,
+  mass, setMass,
+  rampLength, setRampLen,
 
   // Friction coefficients
   muS, setMuS,
@@ -20,14 +54,14 @@ export default function ControlPanel({
 
   // Visualization
   showVectors, setShowVectors,
-  showGrid,    setShowGrid,
+  showGrid, setShowGrid,
 
   // Actions
   onRun, onPause, onReset,
   simState, STATES,
 }) {
   const isRunning = simState === STATES.KINETIC || simState === STATES.STATIC;
-  const isDone    = simState === STATES.DONE;
+  const isDone = simState === STATES.DONE;
 
   const applyPreset = (key) => {
     const p = SURFACE_PRESETS[key];
@@ -42,49 +76,7 @@ export default function ControlPanel({
     >
       <div className="flex flex-col gap-3 p-4">
 
-        {/* ── Action buttons ── */}
-        <div className="flex gap-2">
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onRun}
-            disabled={isRunning}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-opacity"
-            style={{
-              background: isRunning ? "rgba(86,211,100,0.15)" : CLR.normal,
-              color:      isRunning ? CLR.normal : "#0d1117",
-              opacity:    isRunning ? 0.6 : 1,
-              border:     isRunning ? `1px solid ${CLR.normal}` : "none",
-            }}
-          >
-            <Play size={14} fill="currentColor" />
-            {isDone ? "Replay" : "Run"}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onPause}
-            disabled={!isRunning}
-            className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-opacity"
-            style={{
-              borderColor: CLR.border,
-              color:       CLR.text,
-              background:  "transparent",
-              opacity:     !isRunning ? 0.35 : 1,
-              cursor:      !isRunning ? "not-allowed" : "pointer",
-            }}
-          >
-            <Pause size={14} />
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={onReset}
-            className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border"
-            style={{ borderColor: CLR.border, color: CLR.muted, background: "transparent" }}
-          >
-            <RotateCcw size={14} />
-          </motion.button>
-        </div>
+        {/* ── Action buttons moved to left nav panel ── */}
 
         {/* ── 1. Ramp Geometry ── */}
         <FrictionSection
@@ -95,12 +87,21 @@ export default function ControlPanel({
             <FrictionSliderRow
               label="Incline Angle" value={angle}
               min={0} max={90} step={1} unit="°"
+              info={INFO.angle}
               onChange={setAngle}
             />
             <FrictionSliderRow
               label="Block Mass" value={mass}
               min={0.5} max={20} step={0.5} unit="kg"
+              info={INFO.mass}
               onChange={setMass}
+            />
+            <FrictionSliderRow
+              label="Ramp Length" value={rampLength}
+              min={0.30} max={1.50} step={0.01} unit=""
+              hint="Fraction of canvas size"
+              info={INFO.rampLength}
+              onChange={setRampLen}
             />
           </div>
         </FrictionSection>
@@ -134,9 +135,7 @@ export default function ControlPanel({
                     }}
                   >
                     <span>{p.icon} {p.label}</span>
-                    <span style={{ color: CLR.friction }}>
-                      µs {p.us} / µk {p.uk}
-                    </span>
+                    <span style={{ color: CLR.friction }}>µs {p.us} / µk {p.uk}</span>
                   </button>
                 ))}
               </div>
@@ -149,12 +148,14 @@ export default function ControlPanel({
               label="Static Friction (µs)" value={muS}
               min={0} max={1} step={0.01} unit=""
               hint="Max before slipping"
+              info={INFO.muS}
               onChange={(v) => { setMuS(v); if (muK > v) setMuK(v); }}
             />
             <FrictionSliderRow
               label="Kinetic Friction (µk)" value={muK}
               min={0} max={muS} step={0.01} unit=""
               hint="While sliding (≤ µs)"
+              info={INFO.muK}
               onChange={setMuK}
             />
 
@@ -177,11 +178,13 @@ export default function ControlPanel({
             <FrictionToggle
               label="Show Force Vectors"
               value={showVectors}
+              info={INFO.vectors}
               onChange={setShowVectors}
             />
             <FrictionToggle
               label="Show Dot Grid"
               value={showGrid}
+              info={INFO.grid}
               onChange={setShowGrid}
             />
           </div>
@@ -193,10 +196,10 @@ export default function ControlPanel({
             Vector Legend
           </p>
           {[
-            { color: CLR.gravity,  label: "Weight  (mg)"              },
-            { color: CLR.normal,   label: "Normal Force  (N)"         },
-            { color: CLR.friction, label: "Friction  (f)"             },
-            { color: CLR.accent,   label: "Critical slip angle guide" },
+            { color: CLR.gravity, label: "Weight  (mg)" },
+            { color: CLR.normal, label: "Normal Force  (N)" },
+            { color: CLR.friction, label: "Friction  (f)" },
+            { color: CLR.accent, label: "Critical slip angle guide" },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-2 text-xs" style={{ color: CLR.muted }}>
               <span className="w-4 h-0.5 rounded-full shrink-0" style={{ background: item.color }} />

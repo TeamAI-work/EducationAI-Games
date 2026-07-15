@@ -121,20 +121,8 @@ export default function Land() {
         {
             id: 20,
             grade: "subjects",
-            name: 'Physics Lab',
-            path: 'physics/lab'
-        },
-        {
-            id: 21,
-            grade: "subjects",
-            name: 'Physics friction',
-            path: 'physics/friction'
-        },
-        {
-            id: 22,
-            grade: "subjects",
-            name: 'Physics Soundwave',
-            path: 'physics/sound'
+            name: 'Physics Hub',
+            path: 'physics/hub'
         },
         
     ]

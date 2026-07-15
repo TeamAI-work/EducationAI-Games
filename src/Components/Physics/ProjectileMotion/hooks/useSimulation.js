@@ -43,6 +43,7 @@ export function useSimulation({
   const launchPtRef    = useRef(null);
   const trailsRef      = useRef([]);
   const windParticles  = useRef([]);
+  const timeRef        = useRef(0);
 
   // World-bounds: the furthest extents the trajectory has reached this flight.
   // Used to compute the dynamic scale each frame.
@@ -73,7 +74,7 @@ export function useSimulation({
   const [isPaused,   setIsPaused]   = useState(false);
   const [trailCount, setTrailCount] = useState(0);
   const [telemetry,  setTelemetry]  = useState({
-    x: 0, y: 0, speed: 0, maxHeight: 0, range: null, status: "idle",
+    x: 0, y: 0, speed: 0, maxHeight: 0, range: null, time: 0, status: "idle",
   });
 
   // ── Canvas origin helper ────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ export function useSimulation({
     s.vy += ay * DT;
     s.x  += s.vx * DT;
     s.y  += s.vy * DT;
+    timeRef.current += DT;
 
     pathRef.current.push({ x: s.x, y: s.y });
 
@@ -188,7 +190,7 @@ export function useSimulation({
       s.running = false;
       impactRef.current = { x: s.x, y: 0 };
       setIsRunning(false);
-      setTelemetry(prev => ({ ...prev, range: s.x, status: "landed" }));
+      setTelemetry(prev => ({ ...prev, range: s.x, time: timeRef.current, status: "landed" }));
       drawFrame(DT);
       // Restart idle loop so wind keeps animating after landing
       idleRafRef.current = requestAnimationFrame(idleLoopRef.current);
@@ -238,6 +240,7 @@ export function useSimulation({
         y:         s.y,
         speed:     Math.sqrt(s.vx * s.vx + s.vy * s.vy),
         maxHeight: apexRef.current ? apexRef.current.y : 0,
+        time:      timeRef.current,
         status:    s.paused ? "paused" : "flying",
       }));
     }, 100);
@@ -278,7 +281,8 @@ export function useSimulation({
 
     setIsRunning(true);
     setIsPaused(false);
-    setTelemetry({ x: 0, y: height, speed: velocity, maxHeight: height, range: null, status: "flying" });
+    timeRef.current   = 0;
+    setTelemetry({ x: 0, y: height, speed: velocity, maxHeight: height, range: null, time: 0, status: "flying" });
 
     rafRef.current = requestAnimationFrame(loop);
   }, [angle, velocity, height, mass, retainTrails, loop]);
@@ -313,7 +317,8 @@ export function useSimulation({
     setIsRunning(false);
     setIsPaused(false);
     setTrailCount(0);
-    setTelemetry({ x: 0, y: 0, speed: 0, maxHeight: 0, range: null, status: "idle" });
+    timeRef.current   = 0;
+    setTelemetry({ x: 0, y: 0, speed: 0, maxHeight: 0, range: null, time: 0, status: "idle" });
     worldBoundsRef.current  = { maxX: WORLD_PADDING, maxY: WORLD_PADDING };
     displayScaleRef.current = DEFAULT_SCALE;
     // Restart idle loop for continuous wind

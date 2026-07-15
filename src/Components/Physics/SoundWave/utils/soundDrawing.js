@@ -134,53 +134,6 @@ export function drawParticles(ctx, tankLeft, tankTop, tankW, tankH, dispArr) {
   ctx.restore();
 }
 
-// ─── Submarine (SONAR mode) ───────────────────────────────────────────────────
-export function drawSubmarine(ctx, sx, midY, revealed) {
-  ctx.save();
-  ctx.globalAlpha = revealed ? 1 : 0.22;
-
-  // Hull
-  ctx.fillStyle   = CLR.submarine;
-  ctx.strokeStyle = "#b8860b";
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-  ctx.ellipse(sx, midY, 34, 14, 0, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-
-  // Conning tower
-  ctx.fillStyle = "#cc9a06";
-  ctx.beginPath();
-  ctx.roundRect(sx - 6, midY - 22, 12, 12, 3);
-  ctx.fill(); ctx.stroke();
-
-  // "?" label when hidden
-  if (!revealed) {
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle   = CLR.muted;
-    ctx.font        = "bold 16px monospace";
-    ctx.textAlign   = "center";
-    ctx.fillText("?", sx, midY + 6);
-  }
-
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-// ─── Sonar pulse ring ─────────────────────────────────────────────────────────
-export function drawSonarPulse(ctx, px, midY, radius, alpha) {
-  if (radius <= 0 || alpha <= 0) return;
-  ctx.save();
-  ctx.strokeStyle = CLR.sonar;
-  ctx.lineWidth   = 1.8;
-  ctx.globalAlpha = alpha;
-  ctx.shadowColor = CLR.sonar;
-  ctx.shadowBlur  = 8;
-  ctx.beginPath();
-  ctx.arc(px, midY, radius, -Math.PI / 2, Math.PI / 2); // right-facing semicircle
-  ctx.stroke();
-  ctx.restore();
-}
-
 // ─── Wave graph (bottom panel) ────────────────────────────────────────────────
 /**
  * Draws the displacement vs distance sine trace.
@@ -284,16 +237,5 @@ export function drawGraphLabels(ctx, gLeft, gTop, gW, gH, wavelength, v) {
   ctx.font      = "9px monospace";
   ctx.textAlign = "right";
   ctx.fillText(`λ = ${wavelength.toFixed(2)} m   v = ${v} m/s`, gLeft + gW - 6, gTop + gH - 5);
-  ctx.restore();
-}
-
-// ─── SONAR time-of-flight display ────────────────────────────────────────────
-export function drawSonarTimer(ctx, W, gTop, tof, running) {
-  const txt = running ? `TOF: ${tof.toFixed(3)} s  ⏱` : tof > 0 ? `TOF: ${tof.toFixed(3)} s  ✓` : "Fire pulse →";
-  ctx.save();
-  ctx.fillStyle = running ? CLR.sonar : CLR.muted;
-  ctx.font      = "bold 12px monospace";
-  ctx.textAlign = "left";
-  ctx.fillText(txt, W * 0.04, gTop - 6);
   ctx.restore();
 }

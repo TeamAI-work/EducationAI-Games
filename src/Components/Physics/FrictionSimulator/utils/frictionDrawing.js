@@ -12,11 +12,11 @@ import { CLR, BLOCK_SIZE, RAMP_ORIGIN_PAD_X, RAMP_ORIGIN_PAD_Y, RAMP_LENGTH } fr
  *
  * @returns {{ origin, tip, base, rampLen, cosA, sinA }}
  */
-export function getRampGeometry(W, H, angleDeg) {
-  const rad    = (angleDeg * Math.PI) / 180;
-  const cosA   = Math.cos(rad);
-  const sinA   = Math.sin(rad);
-  const rampLen = Math.min(W, H) * RAMP_LENGTH;   // hypotenuse length in px
+export function getRampGeometry(W, H, angleDeg, rampLenFraction = RAMP_LENGTH) {
+  const rad     = (angleDeg * Math.PI) / 180;
+  const cosA    = Math.cos(rad);
+  const sinA    = Math.sin(rad);
+  const rampLen = Math.min(W, H) * rampLenFraction;
 
   const origin = { x: W * RAMP_ORIGIN_PAD_X, y: H * RAMP_ORIGIN_PAD_Y };
   const tip    = { x: origin.x + rampLen * cosA,  y: origin.y - rampLen * sinA };
@@ -69,28 +69,32 @@ export function drawDotGrid(ctx, W, H) {
   ctx.restore();
 }
 
-// ─── Ground line ──────────────────────────────────────────────────────────────
-export function drawGround(ctx, W, H) {
-  const y = H * RAMP_ORIGIN_PAD_Y;
+// ─── Ground line (scene-space version — coordinates passed in directly) ───────
+export function drawGroundLine(ctx, fromX, toX, y) {
   ctx.save();
   ctx.strokeStyle = CLR.rampEdge;
   ctx.lineWidth   = 2;
   ctx.beginPath();
-  ctx.moveTo(0, y);
-  ctx.lineTo(W, y);
+  ctx.moveTo(fromX, y);
+  ctx.lineTo(toX,   y);
   ctx.stroke();
 
-  // Hatch marks below to suggest solid ground
   ctx.strokeStyle = "rgba(48,54,61,0.45)";
   ctx.lineWidth   = 1;
   const hatchStep = 18;
-  for (let x = 0; x < W; x += hatchStep) {
+  for (let x = fromX; x < toX; x += hatchStep) {
     ctx.beginPath();
     ctx.moveTo(x,      y);
     ctx.lineTo(x - 10, y + 10);
     ctx.stroke();
   }
   ctx.restore();
+}
+
+// ─── Ground line (legacy canvas-relative version, kept for compatibility) ────
+export function drawGround(ctx, W, H) {
+  const y = H * RAMP_ORIGIN_PAD_Y;
+  drawGroundLine(ctx, 0, W, y);
 }
 
 // ─── Ramp triangle ────────────────────────────────────────────────────────────
@@ -126,23 +130,25 @@ export function drawRamp(ctx, origin, tip, base) {
 }
 
 // ─── Angle arc label ─────────────────────────────────────────────────────────
-export function drawAngleArc(ctx, origin, rad, angleDeg) {
+// scale: the autoScale transform currently applied — dividing by it makes
+// font sizes appear at a fixed canvas-pixel size regardless of zoom.
+export function drawAngleArc(ctx, origin, rad, angleDeg, scale = 1) {
   if (angleDeg < 2) return;
   const arcR = 36;
   ctx.save();
   ctx.strokeStyle = CLR.accent;
-  ctx.lineWidth   = 1.2;
+  ctx.lineWidth   = 1.2 / scale;
   // Arc from 0 (rightward) sweeping upward by rad
   ctx.beginPath();
   ctx.arc(origin.x, origin.y, arcR, -rad, 0, false);
   ctx.stroke();
 
-  // Label
+  // Label — font size stays constant in canvas-space (~13 px)
   const midAngle = -rad / 2;
   const lx = origin.x + (arcR + 14) * Math.cos(midAngle);
   const ly = origin.y + (arcR + 14) * Math.sin(midAngle);
   ctx.fillStyle = CLR.accent;
-  ctx.font      = "bold 11px monospace";
+  ctx.font      = `bold ${Math.round(13 / scale)}px Inter, sans-serif`;
   ctx.textAlign = "center";
   ctx.fillText(`${angleDeg}°`, lx, ly);
   ctx.restore();
@@ -184,16 +190,19 @@ export function drawBlock(ctx, cx, cy, rad, isMoving) {
   ctx.restore();
 }
 
-// ─── Arrow helper (screen-space) ─────────────────────────────────────────────
-function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "") {
-  const headLen = 10;
+// ─── Arrow helper (scene-space) ───────────────────────────────────────────────
+// scale: the autoScale currently applied to the canvas context.
+// Dividing sizes by scale keeps arrow heads and labels at consistent
+// canvas-pixel size regardless of zoom level.
+function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "", scale = 1) {
+  const headLen = 10 / scale;
   const angle   = Math.atan2(ty - fy, tx - fx);
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle   = color;
-  ctx.lineWidth   = lineWidth;
+  ctx.lineWidth   = lineWidth / scale;
   ctx.shadowColor = color;
-  ctx.shadowBlur  = 6;
+  ctx.shadowBlur  = 6 / scale;
   ctx.lineCap     = "round";
 
   ctx.beginPath();
@@ -210,10 +219,13 @@ function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "") {
 
   if (label) {
     ctx.shadowBlur  = 0;
-    ctx.font        = "bold 10px monospace";
+    // Always render at ~12 canvas-pixels — readable at any zoom
+    const fontSize  = Math.round(12 / scale);
+    ctx.font        = `bold ${fontSize}px Inter, sans-serif`;
     ctx.textAlign   = "center";
-    const lx = tx + 14 * Math.cos(angle);
-    const ly = ty + 14 * Math.sin(angle);
+    const offset    = 16 / scale;
+    const lx = tx + offset * Math.cos(angle);
+    const ly = ty + offset * Math.sin(angle);
     ctx.fillText(label, lx, ly);
   }
 
@@ -221,75 +233,83 @@ function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "") {
 }
 
 // ─── Force vectors ────────────────────────────────────────────────────────────
-const VEC_SCALE = 0.6; // px per Newton
+const VEC_SCALE = 0.6; // scene-units per Newton
 
 /**
  * Draw the three force vectors from the block centre:
  *   1. Gravity   — straight down
  *   2. Normal    — perpendicular to slope (pointing away from surface)
  *   3. Friction  — along slope opposing motion (up the slope when moving)
+ *
+ * scale: the autoScale currently applied — forwarded to drawArrow so that
+ *        arrow heads and labels stay readable at any canvas size.
  */
-export function drawForceVectors(ctx, cx, cy, rad, cosA, sinA, forces, showVectors) {
+export function drawForceVectors(ctx, cx, cy, rad, cosA, sinA, forces, showVectors, scale = 1) {
   if (!showVectors) return;
 
   const { fGravity, fNormal, fFriction } = forces;
 
   // 1. Gravity — straight down
   const gLen = fGravity * VEC_SCALE;
-  drawArrow(ctx, cx, cy, cx, cy + gLen, CLR.gravity, 2.2, `${fGravity.toFixed(1)}N`);
+  drawArrow(ctx, cx, cy, cx, cy + gLen, CLR.gravity, 2.2, `${fGravity.toFixed(1)}N`, scale);
 
   // 2. Normal — perpendicular to slope surface (rotated 90° from slope direction)
-  //    Slope direction unit vector along surface: (-cosA, sinA) going uphill
   //    Normal (pointing away from surface = up-left): (-sinA, -cosA)
   const nLen = fNormal * VEC_SCALE;
   const nTx  = cx + nLen * (-sinA);
   const nTy  = cy + nLen * (-cosA);
-  drawArrow(ctx, cx, cy, nTx, nTy, CLR.normal, 2.2, `${fNormal.toFixed(1)}N`);
+  drawArrow(ctx, cx, cy, nTx, nTy, CLR.normal, 2.2, `${fNormal.toFixed(1)}N`, scale);
 
   // 3. Friction — along slope, pointing uphill (opposing downhill slide)
+  //    Slope goes from origin(bottom-left) to tip(top-right).
+  //    Up-slope direction in screen coords = (cosA, -sinA)
   if (fFriction > 0.01) {
     const fLen = fFriction * VEC_SCALE;
-    // Up-slope unit vector: (cosA, -sinA) ... wait, let's be precise:
-    // Down-slope = (cosA goes right, -sinA goes up-right for positive angle) 
-    // Actually origin is bottom-left, tip is top-right, so:
-    // up-slope direction from block = toward tip = (-cosA from origin perspective, sinA)
-    // Let's use: uphill direction = (-cosA, sinA) in screen space
-    // No: slope goes from origin(bottom-left) to tip(top-right).
-    // Screen: right = +x, down = +y.
-    // Hypotenuse direction from origin to tip = (cosA, -sinA).
-    // So up-slope (toward tip) = (-cosA, +sinA) wait ... 
-    // tip.x = origin.x + rampLen*cosA  → direction (cosA, -sinA) in screen coords
-    // uphill (origin → tip) = (cosA, -sinA)
-    // friction opposes motion (block slides down), so friction points uphill:
     const fTx = cx + fLen * cosA;
     const fTy = cy + fLen * (-sinA);
-    drawArrow(ctx, cx, cy, fTx, fTy, CLR.friction, 2.2, `${fFriction.toFixed(1)}N`);
+    drawArrow(ctx, cx, cy, fTx, fTy, CLR.friction, 2.2, `${fFriction.toFixed(1)}N`, scale);
   }
 }
 
 // ─── "Critical slip angle" dashed guide line ──────────────────────────────────
-export function drawSlipAngleLine(ctx, origin, W, slipAngleDeg, currentAngleDeg) {
+// Drawn AFTER drawRamp so it always renders on top of the filled triangle.
+// scale: the autoScale currently applied — used to keep text readable.
+export function drawSlipAngleLine(ctx, origin, W, slipAngleDeg, currentAngleDeg, scale = 1) {
   if (slipAngleDeg <= 0 || slipAngleDeg > 89) return;
-  const r       = (slipAngleDeg * Math.PI) / 180;
-  const len     = (W - origin.x) * 0.9;
-  const tx      = origin.x + len * Math.cos(r);
-  const ty      = origin.y - len * Math.sin(r);
-  const isPast  = currentAngleDeg >= slipAngleDeg;
+  const r      = (slipAngleDeg * Math.PI) / 180;
+  // Use 0.95 of the extended width so the label has breathing room from the edge
+  const len    = (W - origin.x) * 0.95;
+  const tx     = origin.x + len * Math.cos(r);
+  const ty     = origin.y - len * Math.sin(r);
+  const isPast = currentAngleDeg >= slipAngleDeg;
+
+  const lineColor  = isPast ? "rgba(244,112,103,0.75)" : "rgba(227,179,65,0.6)";
+  const labelColor = isPast ? CLR.gravity : CLR.friction;
 
   ctx.save();
-  ctx.strokeStyle = isPast ? "rgba(244,112,103,0.5)" : "rgba(227,179,65,0.4)";
-  ctx.lineWidth   = 1;
-  ctx.setLineDash([6, 4]);
+
+  // Dashed line — drawn with a slightly stronger opacity so it shows over the ramp
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth   = 1.5 / scale;
+  ctx.setLineDash([7 / scale, 5 / scale]);
+  ctx.shadowColor = lineColor;
+  ctx.shadowBlur  = 4 / scale;
   ctx.beginPath();
   ctx.moveTo(origin.x, origin.y);
   ctx.lineTo(tx, ty);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = isPast ? CLR.gravity : CLR.friction;
-  ctx.font      = "9px monospace";
-  ctx.textAlign = "left";
-  ctx.fillText(`slip: ${slipAngleDeg.toFixed(1)}°`, tx - 44, ty - 6);
+  // Label — anchored at the far tip of the line, offset perpendicularly so it
+  // sits just above the line end rather than on the line itself
+  const fontSize   = Math.round(11 / scale);
+  const perpX      = Math.sin(r) * (10 / scale);   // perpendicular offset above the line
+  const perpY      = Math.cos(r) * (10 / scale);
+  ctx.fillStyle    = labelColor;
+  ctx.font         = `bold ${fontSize}px Inter, sans-serif`;
+  ctx.textAlign    = "right";
+  ctx.fillText(`θc = ${slipAngleDeg.toFixed(1)}°`, tx - perpX, ty - perpY);
   ctx.restore();
 }
 
@@ -321,5 +341,139 @@ export function drawFrictionUtilBar(ctx, W, H, ratio) {
   ctx.font      = "9px monospace";
   ctx.textAlign = "right";
   ctx.fillText("static friction limit", bx - 6, by + barH - 1);
+  ctx.restore();
+}
+
+// ─── Force readout panel (canvas overlay, fixed bottom-left) ─────────────────
+/**
+ * Draws a compact force-values panel directly on the canvas.
+ * Always rendered AFTER ctx.restore() so it sits at true canvas coords,
+ * independent of any scene scale/translate.
+ *
+ * Visible before, during, and after the simulation — values update live
+ * as sliders change.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number}  W           canvas width
+ * @param {number}  H           canvas height
+ * @param {object}  forces      { fGravity, fNormal, fFriction, frictionRatio }
+ * @param {number}  angleDeg    current incline angle
+ * @param {string}  state       STATES value
+ */
+export function drawForceReadout(ctx, W, H, forces, angleDeg, state) {
+  const { fGravity, fNormal, fFriction, frictionRatio } = forces;
+
+  // Derived
+  const rad        = (angleDeg * Math.PI) / 180;
+  const fParallel  = fGravity * Math.sin(rad);   // component pulling down slope
+  const fPerp      = fGravity * Math.cos(rad);   // component into slope (= fNormal)
+  const fNet       = Math.max(0, fParallel - fFriction);
+  const isIdle     = state === "idle";
+
+  // ── Panel geometry ──────────────────────────────────────────────────────────
+  const PAD   = 10;
+  const ROW_H = 19;
+  const rows  = [
+    { label: "Weight  (mg)",       value: fGravity,   color: CLR.gravity,  unit: "N" },
+    { label: "Normal  (N⊥)",       value: fNormal,    color: CLR.normal,   unit: "N" },
+    { label: "Gravity ∥ slope",    value: fParallel,  color: CLR.gravity,  unit: "N" },
+    { label: "Friction  (f)",      value: fFriction,  color: CLR.friction, unit: "N" },
+    { label: "Net Force",          value: fNet,       color: fNet > 0.5 ? CLR.gravity : CLR.muted, unit: "N" },
+  ];
+
+  const panelW = 210;
+  const panelH = PAD * 2 + rows.length * ROW_H + 28; // 28 for header
+  const px     = 12;
+  const py     = H - panelH - 12;
+
+  ctx.save();
+
+  // Panel background
+  ctx.fillStyle   = "rgba(22,27,34,0.88)";
+  ctx.strokeStyle = CLR.border;
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.roundRect(px, py, panelW, panelH, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Header
+  const headerLabel = isIdle ? "Applied Forces (preview)" : "Applied Forces (live)";
+  const dotColor    = isIdle ? CLR.muted : CLR.neon;
+  ctx.fillStyle = CLR.muted;
+  ctx.font      = "bold 9px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("◆ " + headerLabel.toUpperCase(), px + PAD, py + PAD + 9);
+
+  // Dot indicator (green = running, grey = idle)
+  ctx.fillStyle = dotColor;
+  ctx.beginPath();
+  ctx.arc(px + PAD + 4, py + PAD + 5, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Separator line under header
+  ctx.strokeStyle = CLR.border;
+  ctx.lineWidth   = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(px + PAD, py + PAD + 16);
+  ctx.lineTo(px + panelW - PAD, py + PAD + 16);
+  ctx.stroke();
+
+  // Rows
+  rows.forEach((row, i) => {
+    const ry = py + PAD + 26 + i * ROW_H;
+
+    // Label
+    ctx.fillStyle = CLR.muted;
+    ctx.font      = "10px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(row.label, px + PAD, ry + 9);
+
+    // Value + unit
+    ctx.fillStyle = row.color;
+    ctx.font      = "bold 10px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(
+      `${row.value.toFixed(2)} ${row.unit}`,
+      px + panelW - PAD,
+      ry + 9,
+    );
+
+    // Thin colored left accent bar
+    ctx.fillStyle = row.color;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.roundRect(px + 3, ry + 2, 3, ROW_H - 6, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Friction utilisation mini-bar at the bottom of the panel
+  const barY    = py + panelH - 12;
+  const barW    = panelW - PAD * 2;
+  const fill    = Math.min(frictionRatio, 1);
+  const barColor = fill >= 1 ? CLR.gravity : fill > 0.75 ? CLR.friction : CLR.normal;
+
+  ctx.fillStyle = CLR.border;
+  ctx.beginPath();
+  ctx.roundRect(px + PAD, barY, barW, 4, 2);
+  ctx.fill();
+
+  if (fill > 0) {
+    ctx.fillStyle = barColor;
+    ctx.beginPath();
+    ctx.roundRect(px + PAD, barY, barW * fill, 4, 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = CLR.muted;
+  ctx.font      = "8px monospace";
+  ctx.textAlign = "right";
+  ctx.fillText(
+    `static grip: ${Math.round(frictionRatio * 100)}%`,
+    px + panelW - PAD,
+    barY - 3,
+  );
+
   ctx.restore();
 }

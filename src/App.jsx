@@ -25,6 +25,7 @@ import Lab from './Components/Chemistry/Lab/Lab'
 import PhysicsLab from './Components/Physics/PhysicsLab'
 import FrictionSimulator from './Components/Physics/FrictionSimulator/FrictionSimulator'
 import SoundWaveTank from './Components/Physics/SoundWave/SoundWaveTank'
+import PhysicsHub from './Components/Physics/PhysicsHub/PhysicsHub'
 
 function App() {
   return (
@@ -62,9 +63,10 @@ function App() {
         <Route path='/chemistry/lab' element={<Lab />} />
 
         {/* Physics */}
+        <Route path='/physics/hub'      element={<PhysicsHub />}/>
         <Route path='/physics/lab'      element={<PhysicsLab />}/>
         <Route path='/physics/friction' element={<FrictionSimulator />}/>
-        <Route path='/physics/sound'   element={<SoundWaveTank />}/>
+        <Route path='/physics/sound'    element={<SoundWaveTank />}/>
 
         {/* Hero */}
         <Route path='/hero' element={<Hero />} />

@@ -31,18 +31,33 @@ export default function TelemetryBar({ telemetry, gravity }) {
   const tel = telemetry;
 
   return (
-    <motion.div layout className="grid grid-cols-3 gap-2 lg:grid-cols-6">
-      <TelCard label="Range (X)"   value={tel.x.toFixed(1)}              unit="m"    accent={CLR.velX} />
-      <TelCard label="Altitude (Y)" value={tel.y.toFixed(1)}             unit="m"    accent={CLR.velY} />
-      <TelCard label="Net Speed"   value={tel.speed.toFixed(2)}          unit="m/s"  accent={CLR.velTotal} />
-      <TelCard label="Max Height"  value={tel.maxHeight.toFixed(1)}      unit="m"    accent={CLR.apex} />
+    <motion.div layout className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <TelCard
+        label="Range (X)"
+        value={tel.x.toFixed(1)}
+        unit="m"
+        accent={CLR.velX} />
+      <TelCard
+        label="Max Height"
+        value={tel.maxHeight.toFixed(1)}
+        unit="m"
+        accent={CLR.apex} />
       <TelCard
         label="Final Range"
         value={tel.range !== null ? tel.range.toFixed(1) : "—"}
         unit={tel.range !== null ? "m" : ""}
         accent={CLR.neon}
       />
-      <TelCard label="Gravity" value={gravity.toFixed(2)} unit="m/s²" />
+      <TelCard
+        label="Time to Bottom"
+        value={tel.time !== undefined && tel.time !== null ? tel.time.toFixed(2) : "0.00"}
+        unit="s"
+        accent={CLR.accent}
+      />
+      <TelCard
+        label="Gravity"
+        value={gravity.toFixed(2)}
+        unit="m/s²" />
     </motion.div>
   );
 }

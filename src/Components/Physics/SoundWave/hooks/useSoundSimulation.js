@@ -7,7 +7,6 @@ import {
 import {
   clearCanvas, drawDotGrid, drawTankBorder, drawSpeaker,
   drawWall, drawParticles, drawWaveGraph, drawGraphLabels,
-  drawSonarPulse, drawSonarTimer, drawSubmarine,
 } from "../utils/soundDrawing";
 
 // ─── Layout helpers (computed once per resize) ────────────────────────────────
@@ -78,20 +77,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
   const noiseArrRef   = useRef(new Float32Array(PARTICLE_COLS)); // Mode 2 noise wave
   const targetArrRef  = useRef(null);                           // Mode 1 target silhouette
 
-  // ── SONAR state ───────────────────────────────────────────────────────────
-  const sonarRef = useRef({
-    fired:       false,
-    tofRunning:  false,
-    tofStart:    0,
-    tof:         0,
-    subCol:      Math.floor(PARTICLE_COLS * 0.55 + Math.random() * PARTICLE_COLS * 0.3),
-    subRevealed: false,
-    pulseRadius: 0,
-    pulseAlpha:  0,
-    echoRadius:  0,
-    echoAlpha:   0,
-  });
-
   // ── Resonance match tracking ──────────────────────────────────────────────
   const matchRef = useRef({ score: 0, lockTime: 0, won: false });
 
@@ -109,8 +94,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
     matchWon:   false,
     cancelRms:  1,
     cancelWon:  false,
-    sonarTof:   0,
-    sonarRunning: false,
   });
 
   const sizeRef = useRef(canvasSize);
@@ -162,7 +145,7 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
     const vBase     = vNormBase[mediumRef.current] || 0.6;
     const vNorm     = vBase * (actualV / medium.vRef);
     const mission  = missionRef.current;
-    const isDark   = mission === MISSION.SONAR;
+    const isDark   = false;
 
     // ── Compute displacement array ──────────────────────────────────────────
     const disp = dispArrRef.current;
@@ -200,33 +183,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
       matchRef.current.score = matchScore_;
     }
 
-    // ── SONAR pulse physics ──────────────────────────────────────────────────
-    const son = sonarRef.current;
-    if (son.tofRunning) {
-      son.tof = t - son.tofStart;
-      son.pulseRadius += vNorm * W * DT * 0.9;
-      son.pulseAlpha   = Math.max(0, 1 - son.pulseRadius / (W * 0.5));
-      // Check if pulse reached submarine column
-      const subXPx = lay.tankLeft + (son.subCol / PARTICLE_COLS) * lay.tankW;
-      const pulseX  = lay.pistonX + son.pulseRadius;
-      if (pulseX >= subXPx && son.echoAlpha === 0) {
-        // Bounce: start echo ring
-        son.echoRadius = 0;
-        son.echoAlpha  = 1;
-        son.subRevealed = true;
-      }
-      // Advance echo back toward source
-      if (son.echoAlpha > 0) {
-        son.echoRadius += vNorm * W * DT * 0.9;
-        son.echoAlpha   = Math.max(0, 1 - son.echoRadius / (subXPx - lay.pistonX + 20));
-        // Echo returned to speaker
-        if (son.echoRadius >= subXPx - lay.pistonX + 20) {
-          son.tofRunning = false;
-          son.echoAlpha  = 0;
-        }
-      }
-    }
-
     // ─── Tank canvas ─────────────────────────────────────────────────────────
     const ctx = tc.getContext("2d");
     clearCanvas(ctx, W, H, isDark);
@@ -235,17 +191,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
     drawSpeaker(ctx, H, lay.tankTop, lay.tankH, lay.pistonX, A, t);
     drawWall(ctx, lay.wallX, lay.tankTop, lay.tankH, isRigid);
     drawParticles(ctx, lay.tankLeft, lay.tankTop, lay.tankW, lay.tankH, disp);
-
-    // SONAR overlays
-    if (mission === MISSION.SONAR) {
-      const subXPx = lay.tankLeft + (son.subCol / PARTICLE_COLS) * lay.tankW;
-      drawSubmarine(ctx, subXPx, lay.midY, son.subRevealed);
-      if (son.pulseAlpha > 0)
-        drawSonarPulse(ctx, lay.pistonX, lay.midY, son.pulseRadius, son.pulseAlpha);
-      if (son.echoAlpha > 0)
-        drawSonarPulse(ctx, subXPx, lay.midY, son.echoRadius, son.echoAlpha * 0.6);
-      drawSonarTimer(ctx, W, lay.gTop, son.tof, son.tofRunning);
-    }
 
     // ─── Graph canvas ─────────────────────────────────────────────────────────
     const gctx = gc.getContext("2d");
@@ -308,8 +253,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
         matchWon:     matchRef.current.won,
         cancelRms:    cancelRef.current.rms,
         cancelWon:    cancelRef.current.won,
-        sonarTof:     sonarRef.current.tof,
-        sonarRunning: sonarRef.current.tofRunning,
       });
     }, 100);
     return () => clearInterval(id);
@@ -338,30 +281,11 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
     tRef.current = 0;
     matchRef.current  = { score: 0, lockTime: 0, won: false };
     cancelRef.current = { rms: 1, won: false };
-    sonarRef.current  = {
-      fired: false, tofRunning: false, tofStart: 0, tof: 0,
-      subCol: Math.floor(PARTICLE_COLS * 0.55 + Math.random() * PARTICLE_COLS * 0.3),
-      subRevealed: false, pulseRadius: 0, pulseAlpha: 0, echoRadius: 0, echoAlpha: 0,
-    };
     setTelemetry(p => ({
       ...p, running: false, matchPct: 0, matchWon: false,
-      cancelRms: 1, cancelWon: false, sonarTof: 0, sonarRunning: false,
+      cancelRms: 1, cancelWon: false,
     }));
     idleRafRef.current = requestAnimationFrame(idleLoopRef.current);
-  }, []);
-
-  const handleFireSonar = useCallback(() => {
-    if (!runningRef.current) return;
-    const son = sonarRef.current;
-    if (son.tofRunning) return;
-    son.fired       = true;
-    son.tofRunning  = true;
-    son.tofStart    = tRef.current;
-    son.tof         = 0;
-    son.pulseRadius = 0;
-    son.pulseAlpha  = 1;
-    son.echoRadius  = 0;
-    son.echoAlpha   = 0;
   }, []);
 
   // Ref-setters — update ref immediately, RAF picks it up next frame
@@ -387,7 +311,6 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
     handlePlay,
     handlePause,
     handleReset,
-    handleFireSonar,
     syncFreq,
     syncAmp,
     syncPhase,
