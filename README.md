@@ -66,6 +66,38 @@ The Chemistry platform is built to engage high school students in advanced scien
 
 ---
 
+## ⚡ Interactive Physics Suite
+
+The Physics platform is a high-fidelity laboratory environment mapped to Grade 9 & 10 (NCERT syllabus) physics concepts. Managed through the central dashboard **Physics Hub** ([PhysicsHub.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/PhysicsHub.jsx)), it offers five immersive physics environments:
+
+1.  **Motion Runway (Projectile Motion Lab)** ([ProjectileMotion.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/ProjectileMotion/ProjectileMotion.jsx)):
+    *   **Interactive Parameters**: Adjust initial launch speed, launch angle, elevation height, and projectile mass.
+    *   **Vector Overlays**: Toggle live visualization of total velocity vector, horizontal ($v_x$) and vertical ($v_y$) component vectors, and the gravity vector.
+    *   **Environment Presets**: Instantly switch gravity to simulate environments on the Earth, Moon, Mars, Jupiter, or specify custom gravity.
+    *   **Live Telemetry**: Tracks trajectory height, range, flight time, and real-time kinetic vs. potential energy distribution.
+2.  **Friction Slide (Friction Incline Lab)** ([FrictionSimulator.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/FrictionSimulator/FrictionSimulator.jsx)):
+    *   **Incline Mechanics**: Adjust block mass, slope angle, and applied push force.
+    *   **Force Vector Diagram**: Displays real-time force vectors representing Gravitational Force ($F_g$), Normal Force ($F_N$), Friction Force ($F_f$), and Applied Force ($F_a$).
+    *   **Coefficient Presets**: Custom adjust static friction ($\mu_s$) and kinetic friction ($\mu_k$) coefficients or apply presets (Ice, Wood, Metal, Rubber).
+    *   **Motion Solver**: Simulates transition thresholds from rest (static equilibrium) to sliding motion (kinetic phase).
+3.  **Sound Tank (Sound Wave Tank)** ([SoundWaveTank.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/SoundWave/SoundWaveTank.jsx)):
+    *   **Wave Emitter**: Control frequency, amplitude, and initial phase to see sound waves propagate.
+    *   **Medium & Temperature Physics**: Speed of sound is dynamically computed based on selected propagation medium (Air, Water, Steel) and ambient temperature.
+    *   **Reflection & Phase Shift**: Toggle between a *Rigid Boundary* (fixed end, causing phase inversion reflection) and a *Free Boundary* (loose end, reflecting without phase reversal).
+    *   **Dual View**: Render either the wave graph (pressure amplitude vs. distance) or a particle simulation displaying compressions and rarefactions.
+4.  **Circuit Sandbox (Circuit Builder)** ([CircuitBuilder.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/components/CircuitBuilder.jsx)):
+    *   **Interactive Grid Sandbox**: Drag, place, and connect batteries, switches, resistors, light bulbs, wires, and fuses on a grid canvas.
+    *   **Nodal Solver**: Computes voltages, currents, and power drops across all nodes in real time using Kirchhoff's laws.
+    *   **Interactive Instruments**: Drag the Red/Black Voltmeter probes to any node junction to measure potential differences.
+    *   **Safety Simulations**: Features interactive fuses with adjustable current ratings that physically melt and break the circuit if overloaded.
+    *   **Guided Missions**: Step-by-step challenges covering Ohm's Law, Series & Parallel configs, Short Circuits, and Multi-Loop bridge circuits.
+5.  **Optics Lab (Mirror & Eye Lab)** ([OpticsMirrorLab.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/OpticsMirrorLab.jsx)):
+    *   **Ray Bench**: Place Concave/Convex Lenses and Mirrors, adjust focal lengths, object distances, and heights. Traces three physical principal rays (parallel, focal, center) alongside dashed virtual extensions. Calculates signed distances $u, v$, magnification $m$, and image characteristics.
+    *   **Bending Light**: Verify Snell's Law by adjusting refractive indices $n_1$ and $n_2$ of two adjacent media. Tracks incident, reflected, and refracted angles, displaying an interactive protractor and simulating Total Internal Reflection (TIR).
+    *   **Eye Clinic**: Diagnose Myopia and Hypermetropia defects. Apply corrective spectacles (Concave/Convex) and modify diopter power ($D$) in real-time until the light rays focus cleanly onto the retina.
+
+---
+
 ## ⚙️ Tech Stack & Requirements
 
 ### Frontend Dependencies ([package.json](file:///d:/GMS Work/EducationAI-Games/package.json))
