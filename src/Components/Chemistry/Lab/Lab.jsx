@@ -61,10 +61,76 @@ export default function Lab() {
   const [freeReactionData, setFreeReactionData] = useState(null);
   const [showFreeResult, setShowFreeResult] = useState(false);
 
+  // ── Load custom questions from localStorage, fallback to default REACTIONS ──
+  const toSubscript = (num) => {
+    const subs = {
+      "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+      "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉"
+    };
+    return String(num).split("").map(c => subs[c] || c).join("");
+  };
+
+  const questionsList = (() => {
+    const defaultQuestions = REACTIONS;
+    let customQuestions = [];
+
+    try {
+      const stored = localStorage.getItem("chem_lab_custom_questions");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          customQuestions = parsed.map((q, idx) => ({
+            id: q.id || `custom-${idx}`,
+            type: q.isCustom ? "custom" : (q.type || "combination"),
+            question: q.question,
+            hint: q.hint || "",
+            equation: {
+              reactants: q.correctReactants.map(r => `${r.coefficient > 1 ? r.coefficient : ""}${r.symbol}${r.atomCount > 1 ? toSubscript(r.atomCount) : ""}`),
+              arrow: "→",
+              products: [q.balancedEquation ? q.balancedEquation.split("→")[1]?.trim() || "Product" : "Product"],
+              balanced: q.balancedEquation || `${q.correctReactants.map(r => `${r.coefficient > 1 ? r.coefficient : ""}${r.symbol}${r.atomCount > 1 ? toSubscript(r.atomCount) : ""}`).join(" + ")} → Product`
+            },
+            correctReactants: q.correctReactants.map(r => `${r.symbol}${r.atomCount > 1 ? r.atomCount : ""}`),
+            inventory: [
+              ...q.correctReactants.map(r => ({
+                id: `${r.symbol}${r.atomCount > 1 ? r.atomCount : ""}`,
+                label: `${r.symbol}${r.atomCount > 1 ? toSubscript(r.atomCount) : ""}`,
+                name: r.coefficient > 1 ? `${r.coefficient} × ${r.name}` : r.name,
+                color: r.color,
+                dark: r.dark,
+                symbol: r.symbol,
+                atomicNum: r.atomicNum
+              })),
+              ...q.distractors.map(d => ({
+                id: `${d.symbol}${d.atomCount > 1 ? d.atomCount : ""}`,
+                label: `${d.symbol}${d.atomCount > 1 ? toSubscript(d.atomCount) : ""}`,
+                name: d.coefficient > 1 ? `${d.coefficient} × ${d.name}` : d.name,
+                color: d.color,
+                dark: d.dark,
+                symbol: d.symbol,
+                atomicNum: d.atomicNum
+              }))
+            ],
+            explanation: {
+              summary: `${(q.type || "custom").charAt(0).toUpperCase() + (q.type || "custom").slice(1)} Reaction`,
+              mechanism: [q.explanation || "Correct reaction combined successfully!"],
+              realWorld: "",
+              energyType: ""
+            }
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Error loading custom questions:", e);
+    }
+
+    return [...defaultQuestions, ...customQuestions];
+  })();
+
   // ── Derived ───────────────────────────────────────────────────────────────
-  const reaction = REACTIONS[questionIndex];
+  const reaction = questionsList[questionIndex] || questionsList[0];
   const typeMeta = REACTION_TYPES[reaction.type];
-  const totalQuestions = REACTIONS.length;
+  const totalQuestions = questionsList.length;
   const hasCompoundsInInventory = reaction.inventory.some(
     item => COMPOUND_RECIPES[item.id] !== undefined
   );
@@ -72,7 +138,9 @@ export default function Lab() {
   // ── Beaker actions ────────────────────────────────────────────────────────
   const addToBeaker = (item) => {
     if (beaker.find(b => b.id === item.id)) return;
-    setBeaker(prev => [...prev, { ...item, atomCount: 1, coefficient: 1 }]);
+    const match = item.id.match(/^([A-Za-z]+)(\d+)$/);
+    const defaultAtomCount = match ? parseInt(match[2], 10) : 1;
+    setBeaker(prev => [...prev, { ...item, atomCount: defaultAtomCount, coefficient: 1 }]);
     setStatus("idle");
   };
   const removeFromBeaker = (index) => { setBeaker(prev => prev.filter((_, i) => i !== index)); setStatus("idle"); };
@@ -84,10 +152,19 @@ export default function Lab() {
     setBeaker(prev => prev.map((el, i) => i === index ? { ...el, coefficient: clamped } : el));
   };
 
-  /** Update the atomCount subscript of one element in the reaction builder beaker. */
+  /** Update the atomCount subscript of one element in the reaction builder beaker,
+   *  dynamically updating its ID so that it matches checking logic (e.g. H + subscript 2 -> ID "H2").
+   */
   const updateBuilderAtomCount = (index, newCount) => {
     const clamped = Math.max(1, Math.min(9, newCount));
-    setBeaker(prev => prev.map((el, i) => i === index ? { ...el, atomCount: clamped } : el));
+    setBeaker(prev => prev.map((el, i) => {
+      if (i === index) {
+        const baseSymbol = el.symbol || el.id.replace(/\d+$/, "");
+        const newId = `${baseSymbol}${clamped > 1 ? clamped : ""}`;
+        return { ...el, id: newId, atomCount: clamped };
+      }
+      return el;
+    }));
   };
 
 
@@ -283,7 +360,16 @@ export default function Lab() {
   };
 
   const handleSelectReactionType = (typeKey) => {
-    const index = REACTIONS.findIndex(r => r.type === typeKey);
+    if (typeKey === "custom") {
+      const customStartIndex = questionsList.findIndex(q => q.id?.startsWith?.("custom-"));
+      if (customStartIndex !== -1) {
+        setQuestionIndex(customStartIndex);
+        resetQuestion();
+        return;
+      }
+    }
+
+    const index = questionsList.findIndex(r => r.type === typeKey);
     if (index !== -1) { setQuestionIndex(index); resetQuestion(); }
   };
 

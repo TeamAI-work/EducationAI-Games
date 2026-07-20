@@ -124,6 +124,12 @@ export default function Land() {
             name: 'Physics Hub',
             path: 'physics/hub'
         },
+        {
+            id: 21,
+            grade: "subjects",
+            name: 'Biology Hub',
+            path: 'biology/hub'
+        },
         
     ]
 

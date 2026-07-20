@@ -13,7 +13,8 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,7 +93,7 @@ def craft_compound(request: CraftRequest):
     determine whether a real compound can be formed and return rich educational data.
     If no valid compound exists, explain why in student-friendly language.
     """
-    model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.3)
+    model = ChatGroq(model="llama-3.1-8b-instant", temperature=0.3)
     llm = model.with_structured_output(CompoundInfo)
 
     element_list = ", ".join(request.elements)

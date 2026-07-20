@@ -1,5 +1,5 @@
 import {
-  Layers, Scissors, Shuffle, ArrowRightLeft, Flame,
+  Layers, Scissors, Shuffle, ArrowRightLeft, Flame, Sparkles,
 } from "lucide-react";
 
 const REACTION_TYPES = {
@@ -47,6 +47,15 @@ const REACTION_TYPES = {
     border: "#fca5a5",
     description: "A substance reacts rapidly with oxygen, releasing heat and light.",
     pattern: "Fuel + O₂ → CO₂ + H₂O",
+  },
+  custom: {
+    label: "Custom",
+    icon: Sparkles,
+    color: "#8b5cf6",
+    bg: "#faf5ff",
+    border: "#d8b4fe",
+    description: "Your teacher-built questions and saved custom challenges.",
+    pattern: "Custom",
   },
 };
 

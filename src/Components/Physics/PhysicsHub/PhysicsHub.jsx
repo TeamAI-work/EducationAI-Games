@@ -1,21 +1,27 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, FlaskConical, ChevronRight } from "lucide-react";
-import { CLR, TABS } from "./constants/hubConstants";
+import { ArrowLeft, FlaskConical, ChevronRight, Sun, Moon } from "lucide-react";
+import { CLR as hubCLR, TABS } from "./constants/hubConstants";
+import { CLR as frictionCLR } from "../FrictionSimulator/constants/frictionConstants";
+import { CLR as physicsCLR } from "../ProjectileMotion/constants/physicsConstants";
+import { CLR as soundCLR } from "../SoundWave/constants/soundConstants";
 
 import ProjectileMotion from "../ProjectileMotion/ProjectileMotion";
 import FrictionSimulator from "../FrictionSimulator/FrictionSimulator";
 import SoundWaveTank from "../SoundWave/SoundWaveTank";
-import OpticsMirrorLab  from "./OpticsMirrorLab";
-import CircuitBuilder    from "./components/CircuitBuilder";
+import OpticsMirrorLab from "./OpticsMirrorLab";
+import CircuitBuilder from "./components/CircuitBuilder";
+
+// Define local copy of CLR for backwards compatibility inside the component file structure
+const CLR = hubCLR;
 
 const TAB_ACCENT = {
-  motion:   "#58a6ff",
+  motion: "#58a6ff",
   friction: "#56d364",
-  sound:    "#00e5ff",
-  power:    "#39d353", // Glowing green for Circuit Sandbox
-  optics:   "#e3b341",
+  sound: "#00e5ff",
+  power: "#39d353", // Glowing green for Circuit Sandbox
+  optics: "#e3b341",
 };
 
 // ─── Left nav tab item ────────────────────────────────────────────────────────
@@ -26,13 +32,12 @@ function NavItem({ tab, active, onClick }) {
       whileHover={{ x: 2 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors relative"
+      className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-colors relative items-start"
       style={{
-        background: active ? `${accent}12` : "transparent",
-        border:     `1px solid ${active ? accent + "55" : "transparent"}`,
+        background: active ? `${accent}16` : "transparent",
+        border: `1px solid ${active ? accent + "55" : "transparent"}`,
       }}
     >
-      {/* Active indicator bar */}
       {active && (
         <motion.div
           layoutId="nav-indicator"
@@ -42,103 +47,185 @@ function NavItem({ tab, active, onClick }) {
         />
       )}
 
-      <span className="text-lg leading-none ml-1">{tab.icon}</span>
+      <span className="text-base leading-none ml-1 mt-0.5">{tab.icon}</span>
 
-      <div className="flex flex-col min-w-0 flex-1">
+      <div className="flex flex-col min-w-0 flex-1 pt-0.5">
         <span
-          className="text-xs font-semibold leading-tight truncate"
+          className="text-[11px] font-semibold leading-tight"
           style={{ color: active ? accent : CLR.text }}
         >
           {tab.label}
         </span>
-        {/* <span className="text-[9px] mt-0.5 truncate" style={{ color: CLR.muted }}>
-          {tab.grade} · {tab.topic}
-        </span> */}
+        <span
+          className="text-[9px] mt-0.5 leading-snug text-left"
+          style={{ color: active ? accent : CLR.muted }}
+        >
+          {tab.description}
+        </span>
       </div>
 
-      <ChevronRight size={12} style={{ color: active ? accent : "transparent", flexShrink: 0 }} />
+      <ChevronRight
+        size={12}
+        className="mt-1"
+        style={{ color: active ? accent : "transparent", flexShrink: 0 }}
+      />
     </motion.button>
   );
 }
 
 // ─── Wrapper for existing full-screen simulators ──────────────────────────────
 function SimulatorPane({ children }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {children}
-    </div>
-  );
+  return <div className="absolute inset-0 overflow-hidden">{children}</div>;
+}
+
+// ─── Theme mutator (module-level so ESLint immutability rule is satisfied) ────
+// Called synchronously at the top of each render so all CLR references are
+// already updated before JSX evaluates style={{ background: CLR.bg }} etc.
+function applyTheme(isDark) {
+  localStorage.setItem("physics-theme", isDark ? "dark" : "light");
+
+  hubCLR.bg = isDark ? "#0d1117" : "#f8fafc";
+  hubCLR.panel = isDark ? "#161b22" : "#ffffff";
+  hubCLR.border = isDark ? "#30363d" : "#cbd5e1";
+  hubCLR.text = isDark ? "#f0f6fc" : "#0f172a";
+  hubCLR.muted = isDark ? "#8b949e" : "#475569";
+  hubCLR.grid = isDark ? "rgba(48,54,61,0.55)" : "rgba(203,213,225,0.7)";
+  hubCLR.axis = isDark ? "rgba(139,148,158,0.4)" : "rgba(71,85,105,0.5)";
+
+  frictionCLR.bg = isDark ? "#0d1117" : "#f8fafc";
+  frictionCLR.panel = isDark ? "#161b22" : "#ffffff";
+  frictionCLR.border = isDark ? "#30363d" : "#cbd5e1";
+  frictionCLR.text = isDark ? "#e6edf3" : "#0f172a";
+  frictionCLR.muted = isDark ? "#8b949e" : "#475569";
+  frictionCLR.ramp = isDark ? "#21262d" : "#e2e8f0";
+  frictionCLR.rampEdge = isDark ? "#30363d" : "#94a3b8";
+  frictionCLR.grid = isDark ? "rgba(48,54,61,0.6)" : "rgba(203,213,225,0.7)";
+
+  physicsCLR.bg = isDark ? "#0d1117" : "#f8fafc";
+  physicsCLR.panel = isDark ? "#161b22" : "#ffffff";
+  physicsCLR.border = isDark ? "#30363d" : "#cbd5e1";
+  physicsCLR.text = isDark ? "#e6edf3" : "#0f172a";
+  physicsCLR.muted = isDark ? "#8b949e" : "#475569";
+  physicsCLR.grid = isDark ? "rgba(48,54,61,0.9)" : "rgba(203,213,225,0.7)";
+  physicsCLR.ground = isDark ? "#30363d" : "#94a3b8";
+
+  soundCLR.bg = isDark ? "#0d1117" : "#f8fafc";
+  soundCLR.panel = isDark ? "#161b22" : "#ffffff";
+  soundCLR.border = isDark ? "#30363d" : "#cbd5e1";
+  soundCLR.text = isDark ? "#f0f6fc" : "#0f172a";
+  soundCLR.muted = isDark ? "#8b949e" : "#475569";
+  soundCLR.grid = isDark ? "rgba(48,54,61,0.55)" : "rgba(203,213,225,0.7)";
+  soundCLR.speaker = isDark ? "#21262d" : "#cbd5e1";
+  soundCLR.speakerEdge = isDark ? "#30363d" : "#94a3b8";
+  soundCLR.particle = isDark ? "rgba(240,246,252,0.22)" : "rgba(15,23,42,0.14)";
 }
 
 export default function PhysicsHub() {
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("motion");
-  const activeTabData = TABS.find(t => t.id === activeTab);
-  const accent = TAB_ACCENT[activeTab];
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem("physics-theme");
+    return saved !== "light"; // default to dark (obsidian theme)
+  });
 
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
 
+  // Apply theme synchronously every render — CLR objects are updated before
+  // JSX evaluates so all inline styles and canvas draw calls get fresh values.
+  applyTheme(isDarkMode);
+
   return (
     <div
-      className="flex h-screen overflow-hidden"
+      className="flex h-screen overflow-hidden flex-col"
       style={{ background: CLR.bg, fontFamily: "Inter, sans-serif" }}
     >
-      {/* ── LEFT NAV COLUMN ──────────────────────────────────────────────────── */}
-      <motion.aside
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-52 shrink-0 flex flex-col border-r overflow-hidden"
+      {/* ── TOP BAR ─────────────────────────────────────────────────────────── */}
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="flex items-center justify-between gap-2 border-b px-3 py-5 shrink-0"
         style={{ background: CLR.panel, borderColor: CLR.border }}
       >
-        {/* Branding */}
-        <div className="px-4 py-4 border-b" style={{ borderColor: CLR.border }}>
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "rgba(88,166,255,0.12)" }}
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileHover={{ x: -1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium"
+            style={{ color: CLR.muted, background: "rgba(148,163,184,0.08)" }}
+          >
+            <ArrowLeft size={12} /> Back
+          </motion.button>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "rgba(88,166,255,0.12)" }}
+          >
+            <FlaskConical size={15} style={{ color: CLR.accent }} />
+          </div>
+          <div>
+            <p
+              className="text-[11px] font-bold leading-none"
+              style={{ color: CLR.text }}
             >
-              <FlaskConical size={14} style={{ color: CLR.accent }} />
-            </div>
-            <div>
-              <p className="text-xs font-bold leading-none" style={{ color: CLR.text }}>
-                NCERT Physics
-              </p>
-              <p className="text-[9px] mt-0.5" style={{ color: CLR.muted }}>
-                Grades 9 &amp; 10
-              </p>
-            </div>
+              Easy Physics Lab
+            </p>
+            <p
+              className="text-[9px] mt-0.5 leading-none"
+              style={{ color: CLR.muted }}
+            >
+              Try one idea at a time
+            </p>
           </div>
         </div>
 
-        {/* Module list */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-1">
-          <p className="text-[9px] uppercase tracking-widest font-semibold px-2 mb-1"
-            style={{ color: CLR.muted }}>
-            Simulators
-          </p>
-          {TABS.map(tab => (
-            <NavItem
-              key={tab.id}
-              tab={tab}
-              active={activeTab === tab.id}
-              onClick={() => handleTabChange(tab.id)}
-            />
-          ))}
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          {TABS.map((tab) => {
+            const accent = TAB_ACCENT[tab.id];
+            const isActive = activeTab === tab.id;
+            return (
+              <motion.button
+                key={tab.id}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleTabChange(tab.id)}
+                className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold whitespace-nowrap border"
+                style={{
+                  background: isActive
+                    ? `${accent}16`
+                    : "rgba(7, 20, 39, 0.08)",
+                  borderColor: isActive ? accent + "55" : CLR.border,
+                  color: isActive ? accent : CLR.text,
+                }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </motion.button>
+            );
+          })}
         </div>
 
-        {/* Back button at bottom */}
-        <div className="px-3 py-3 border-t" style={{ borderColor: CLR.border }}>
+        <div className="flex items-center gap-2 shrink-0">
           <motion.button
-            whileHover={{ x: -2 }} whileTap={{ scale: 0.95 }}
-            onClick={() => navigate(-1)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
-            style={{ color: CLR.muted, background: "rgba(139,148,158,0.06)" }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold border"
+            style={{
+              borderColor: CLR.border,
+              background: "rgba(148,163,184,0.08)",
+              color: CLR.text,
+            }}
           >
-            <ArrowLeft size={13} /> Back to Home
+            {isDarkMode ? (
+              <Moon size={12} style={{ color: CLR.accent }} />
+            ) : (
+              <Sun size={12} style={{ color: CLR.amber }} />
+            )}
+            <span>{isDarkMode ? "Dark" : "Light"}</span>
           </motion.button>
         </div>
-      </motion.aside>
+      </motion.header>
 
       {/* ── CONTENT AREA (fills remaining space, simulators manage their own 3-col layout) ── */}
       <div className="flex-1 relative overflow-hidden">
@@ -152,22 +239,34 @@ export default function PhysicsHub() {
             className="absolute inset-0 flex flex-col overflow-hidden"
           >
             {activeTab === "motion" && (
-              <SimulatorPane><ProjectileMotion embedded /></SimulatorPane>
+              <SimulatorPane>
+                <ProjectileMotion embedded theme={isDarkMode} />
+              </SimulatorPane>
             )}
             {activeTab === "friction" && (
-              <SimulatorPane><FrictionSimulator embedded /></SimulatorPane>
+              <SimulatorPane>
+                <FrictionSimulator embedded theme={isDarkMode} />
+              </SimulatorPane>
             )}
             {activeTab === "sound" && (
-              <SimulatorPane><SoundWaveTank embedded /></SimulatorPane>
+              <SimulatorPane>
+                <SoundWaveTank embedded theme={isDarkMode} />
+              </SimulatorPane>
             )}
             {activeTab === "power" && (
               <div className="flex flex-1 min-h-0 overflow-hidden">
-                <CircuitBuilder active={activeTab === "power"} />
+                <CircuitBuilder
+                  active={activeTab === "power"}
+                  theme={isDarkMode}
+                />
               </div>
             )}
             {activeTab === "optics" && (
               <div className="flex flex-1 min-h-0 overflow-hidden">
-                <OpticsMirrorLab active={activeTab === "optics"} />
+                <OpticsMirrorLab
+                  active={activeTab === "optics"}
+                  theme={isDarkMode}
+                />
               </div>
             )}
           </motion.div>

@@ -22,10 +22,12 @@ import NumberArrange from './Components/Grade4/NumberArrange'
 import FormulaBuild from './Components/Chemistry/FormulaBuild'
 import PeriodicTable from './Components/Chemistry/PeriodicTable'
 import Lab from './Components/Chemistry/Lab/Lab'
+import TeacherQuestionBuilder from './Components/Chemistry/Lab/TeacherQuestionBuilder'
 import PhysicsLab from './Components/Physics/PhysicsLab'
 import FrictionSimulator from './Components/Physics/FrictionSimulator/FrictionSimulator'
 import SoundWaveTank from './Components/Physics/SoundWave/SoundWaveTank'
 import PhysicsHub from './Components/Physics/PhysicsHub/PhysicsHub'
+import BioHub from './Components/Biology/BioHub'
 
 function App() {
   return (
@@ -61,12 +63,16 @@ function App() {
         {/* Chemistry */}
         <Route path='/chemistry/periodic-table' element={<PeriodicTable />} />
         <Route path='/chemistry/lab' element={<Lab />} />
+        <Route path='/chemistry/lab/teacher' element={<TeacherQuestionBuilder />} />
 
         {/* Physics */}
         <Route path='/physics/hub'      element={<PhysicsHub />}/>
         <Route path='/physics/lab'      element={<PhysicsLab />}/>
         <Route path='/physics/friction' element={<FrictionSimulator />}/>
         <Route path='/physics/sound'    element={<SoundWaveTank />}/>
+
+        {/* Biology */}
+        <Route path='/biology/hub' element={<BioHub />}/>
 
         {/* Hero */}
         <Route path='/hero' element={<Hero />} />

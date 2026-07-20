@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Sparkles } from "lucide-react";
 import REACTION_TYPES from "../constants/REACTION_TYPES";
 import REACTIONS from "../Reactions";
 
@@ -16,6 +16,46 @@ const itemVariants = {
 };
 
 export default function ReactionTypesPanel({ currentType, onSelectType }) {
+  const customQuestionCount = (() => {
+    try {
+      const stored = localStorage.getItem("chem_lab_custom_questions");
+      if (!stored) return 0;
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed.filter(q => q?.question?.trim() && q?.correctReactants?.length).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const cards = [
+    ...Object.entries(REACTION_TYPES)
+      .filter(([key]) => key !== "custom")
+      .map(([key, meta]) => ({
+        key,
+        type: "preset",
+        meta,
+        count: REACTIONS.filter(r => r.type === key).length,
+        isCustom: false,
+        label: meta.label,
+      })),
+    ...(customQuestionCount > 0 ? [{
+      key: "custom",
+      type: "custom",
+      meta: {
+        label: "Custom",
+        icon: Sparkles,
+        color: "#8b5cf6",
+        bg: "#faf5ff",
+        border: "#d8b4fe",
+        description: "Jump to your saved teacher-built questions.",
+        pattern: "Custom",
+      },
+      count: customQuestionCount,
+      isCustom: true,
+      label: "Custom",
+    }] : []),
+  ];
+
   return (
     <aside className="h-full flex flex-col gap-2 overflow-hidden">
 
@@ -44,10 +84,9 @@ export default function ReactionTypesPanel({ currentType, onSelectType }) {
         animate="show"
         className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto pr-0.5"
       >
-        {Object.entries(REACTION_TYPES).map(([key, meta]) => {
+        {cards.map(({ key, meta, count, isCustom }) => {
           const Icon     = meta.icon;
           const isActive = key === currentType;
-          const count    = REACTIONS.filter(r => r.type === key).length;
 
           return (
             <motion.button
@@ -152,7 +191,7 @@ export default function ReactionTypesPanel({ currentType, onSelectType }) {
 
                 {/* Progress dots */}
                 <span className="text-[9px] text-gray-400 font-medium">
-                  {count}Q
+                  {count}{isCustom ? "✓" : "Q"}
                 </span>
               </div>
             </motion.button>
