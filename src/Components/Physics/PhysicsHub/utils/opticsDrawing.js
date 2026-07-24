@@ -165,11 +165,64 @@ export function drawObject(ctx, objX, H, objHeight) {
 }
 
 // ─── Image arrow ──────────────────────────────────────────────────────────────
-export function drawImage(ctx, imgX, H, imgHeight, isReal, isVirtual) {
-  if (!isFinite(imgX)) return;
+export function drawImage(ctx, imgX, H, imgHeight, isReal, isVirtual, W = 800) {
+  if (!isFinite(imgX) || !isFinite(imgHeight)) return;
   const midY = H / 2;
   const tipY = midY - imgHeight;
-  const col = isVirtual ? "rgba(57,211,83,0.6)" : CLR_O.image;
+
+  // Off-screen detection
+  const isOffLeft = imgX < 15;
+  const isOffRight = imgX > W - 15;
+  const isOffTop = tipY < 15;
+  const isOffBottom = tipY > H - 15;
+  const isOffScreen = isOffLeft || isOffRight || isOffTop || isOffBottom;
+
+  if (isOffScreen) {
+    ctx.save();
+    const col = isVirtual ? "#39d353" : "#f47067";
+    const dirIcon = isOffLeft ? "← " : isOffRight ? " →" : isOffTop ? "↑ " : "↓ ";
+    const label = `${dirIcon}Off-Screen Image (${isVirtual ? "Virtual" : "Real"})${isOffRight ? dirIcon : ""}`;
+
+    ctx.font = "bold 10px monospace";
+    const textW = ctx.measureText(label).width;
+    const px = textW + 14;
+    const py = 22;
+
+    const drawX = isOffLeft ? 10 : isOffRight ? W - px - 10 : Math.max(10, Math.min(W - px - 10, imgX - px / 2));
+    const drawY = isOffTop ? 10 : isOffBottom ? H - py - 10 : Math.max(10, Math.min(H - py - 10, tipY - py / 2));
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.roundRect(drawX, drawY, px, py, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = col;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, drawX + 7, drawY + py / 2);
+    ctx.restore();
+
+    // Guide stub line to canvas edge
+    const clampedImgX = Math.max(8, Math.min(W - 8, imgX));
+    const clampedTipY = Math.max(8, Math.min(H - 8, tipY));
+    ctx.save();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(clampedImgX, midY);
+    ctx.lineTo(clampedImgX, clampedTipY);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  const col = isVirtual ? "rgba(57,211,83,0.85)" : CLR_O.image;
 
   ctx.save();
   ctx.strokeStyle = col; ctx.fillStyle = col;
@@ -179,11 +232,14 @@ export function drawImage(ctx, imgX, H, imgHeight, isReal, isVirtual) {
   ctx.beginPath(); ctx.moveTo(imgX, midY); ctx.lineTo(imgX, tipY); ctx.stroke();
   ctx.setLineDash([]);
   ctx.beginPath();
+  const dir = imgHeight >= 0 ? 1 : -1;
   ctx.moveTo(imgX, tipY);
-  ctx.lineTo(imgX - 5, tipY + 9); ctx.lineTo(imgX + 5, tipY + 9);
+  ctx.lineTo(imgX - 5, tipY + dir * 9);
+  ctx.lineTo(imgX + 5, tipY + dir * 9);
   ctx.closePath(); ctx.fill();
-  ctx.font = "10px monospace"; ctx.textAlign = "right";
-  ctx.fillText(isVirtual ? "Image (virtual)" : "Image (real)", imgX - 8, tipY + 4);
+  ctx.font = "10px monospace"; ctx.textAlign = imgX > W / 2 ? "left" : "right";
+  const textOffset = imgX > W / 2 ? 8 : -8;
+  ctx.fillText(isVirtual ? "Image (virtual)" : "Image (real)", imgX + textOffset, tipY + 4);
   ctx.restore();
 }
 
@@ -334,31 +390,38 @@ export function drawRays(ctx, W, H, type, lensX, focalPx, objX, objHeightPx, img
 
 // ─── Telemetry overlay ────────────────────────────────────────────────────────
 export function drawOpticsTelemetry(ctx, W, H, data) {
-  const { u, v, f, m, nature } = data;
+  const { u, v, f, m, h_o, h_i, power, scaleText, nature, pathType } = data;
   const items = [
-    { label: "Object dist (u)", value: isFinite(u) ? `−${Math.abs(u).toFixed(1)}` : "∞" },
-    { label: "Image dist (v)", value: isFinite(v) ? v.toFixed(1) : "∞" },
-    { label: "Focal length (f)", value: f.toFixed(1) },
-    { label: "Magnification", value: isFinite(m) ? m.toFixed(2) : "∞" },
-    { label: "Image nature", value: nature || "—" },
+    { label: "Object dist (u)", value: isFinite(u) ? `${u.toFixed(1)} px` : "∞" },
+    { label: "Image dist (v)", value: isFinite(v) ? `${v > 0 ? "+" : ""}${v.toFixed(1)} px` : "∞" },
+    { label: "Object height (Hₒ)", value: isFinite(h_o) ? `${h_o.toFixed(1)} px` : "—" },
+    { label: "Image height (Hᵢ)", value: isFinite(h_i) ? `${h_i > 0 ? "+" : ""}${h_i.toFixed(1)} px` : "∞" },
+    { label: "Focal length (f)", value: isFinite(f) ? `${f > 0 ? "+" : ""}${f.toFixed(1)} px` : "—" },
+    { label: "Lens Power (P)", value: isFinite(power) ? `${power > 0 ? "+" : ""}${power.toFixed(2)} D` : "—" },
+    { label: "Magnification (m)", value: isFinite(m) ? `${m > 0 ? "+" : ""}${m.toFixed(2)}` : "∞" },
+    { label: "Image Scale", value: scaleText || "—" },
+    { label: "Image Nature", value: nature || "—" },
+    { label: "Ray Path", value: pathType || "—" },
   ];
-  const cardW = 210, cardH = 24, pad = 12;
-  const bx = W - cardW - 16, by = 16;
+  const cardW = 210, cardH = 19, pad = 10;
+  const bx = W - cardW - 14, by = 14;
+  const totalH = pad * 2 + 16 + items.length * cardH;
+
   ctx.save();
-  ctx.fillStyle = "rgba(22,27,34,0.85)";
+  ctx.fillStyle = "rgba(22,27,34,0.92)";
   ctx.strokeStyle = "#30363d"; ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(bx - pad, by - pad, cardW + pad * 2, 142, 8);
+  ctx.roundRect(bx - pad, by - pad, cardW + pad * 2, totalH, 8);
   ctx.fill(); ctx.stroke();
 
-  ctx.fillStyle = "#8b949e"; ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
-  ctx.fillText("TELEMETRY", bx, by + 6);
+  ctx.fillStyle = "#8b949e"; ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
+  ctx.fillText("OPTICS TELEMETRY", bx, by + 4);
 
   items.forEach((item, i) => {
-    const y = by + 26 + i * cardH;
-    ctx.fillStyle = "#8b949e"; ctx.font = "11px monospace";
+    const y = by + 20 + i * cardH;
+    ctx.fillStyle = "#8b949e"; ctx.font = "10px monospace";
     ctx.fillText(item.label, bx, y);
-    ctx.fillStyle = "#e6edf3"; ctx.font = "bold 13px monospace"; ctx.textAlign = "right";
+    ctx.fillStyle = "#e6edf3"; ctx.font = "bold 11px monospace"; ctx.textAlign = "right";
     ctx.fillText(item.value, bx + cardW, y);
     ctx.textAlign = "left";
   });

@@ -29,9 +29,9 @@ export const CLR = {
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 export const TABS = [
-  { id: "motion",    label: "Motion",      icon: "🚀", grade: "9th", topic: "Motion",           description: "See how objects move and change speed." },
-  { id: "friction",  label: "Friction",    icon: "📐", grade: "9th", topic: "Force & Motion",  description: "Learn why surfaces slow things down." },
-  { id: "sound",     label: "Sound",       icon: "🔊", grade: "9th", topic: "Sound Waves",     description: "Watch waves travel and change pitch." },
-  { id: "power",     label: "Circuits",    icon: "🔌", grade: "10th", topic: "Electricity",     description: "Build simple circuits and test them." },
-  { id: "optics",    label: "Light",       icon: "🔬", grade: "10th", topic: "Light & Human Eye", description: "See how mirrors and light change direction." },
+  { id: "motion",    label: "Motion",      icon: "", grade: "9th", topic: "Motion",           description: "See how objects move and change speed." },
+  { id: "friction",  label: "Friction",    icon: "", grade: "9th", topic: "Force & Motion",  description: "Learn why surfaces slow things down." },
+  { id: "sound",     label: "Sound",       icon: "", grade: "9th", topic: "Sound Waves",     description: "Watch waves travel and change pitch." },
+  { id: "power",     label: "Circuits",    icon: "", grade: "10th", topic: "Electricity",     description: "Build simple circuits and test them." },
+  { id: "optics",    label: "Light",       icon: "", grade: "10th", topic: "Light & Human Eye", description: "See how mirrors and light change direction." },
 ];

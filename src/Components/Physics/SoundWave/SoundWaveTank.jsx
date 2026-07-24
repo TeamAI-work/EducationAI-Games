@@ -115,7 +115,7 @@ function LeftPanel({
         </div>
 
         {/* ── Boundary ── */}
-        <div className="flex flex-col gap-1.5">
+        {/* <div className="flex flex-col gap-1.5">
           <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>Boundary</p>
           <button
             onClick={() => setBoundary(isRigid ? BOUNDARY.ABSORB : BOUNDARY.RIGID)}
@@ -128,22 +128,9 @@ function LeftPanel({
             <span>{isRigid ? "Rigid Wall" : "Foam Absorb"}</span>
             <span className="text-[9px] font-mono">{isRigid ? "ECHO" : "NO"}</span>
           </button>
-        </div>
+        </div> */}
 
-        {/* ── Graph legend ── */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>Legend</p>
-          {[
-            { color: CLR.wave,   label: "Your wave"   },
-            { color: CLR.target, label: "Target"       },
-            { color: CLR.noise,  label: "Noise"        },
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-2 text-[10px]" style={{ color: CLR.muted }}>
-              <span className="w-3 h-0.5 rounded-full shrink-0" style={{ background: item.color }} />
-              {item.label}
-            </div>
-          ))}
-        </div>
+
       </div>
 
       {!embedded && (

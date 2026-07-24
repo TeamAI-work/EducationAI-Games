@@ -178,7 +178,13 @@ export default function OpticsMirrorLab({ active }) {
     syncDefect, syncCorrType, syncCorrDiopt,
     syncN1, syncN2, syncIncidenceAngle, syncShowProtractor,
     OPTIC_MODES: OM, COMPONENTS: COM, EYE_DEFECTS: ED,
-  } = useOpticsLab({ canvasRef, canvasSize, active });
+  } = useOpticsLab({
+    canvasRef,
+    canvasSize,
+    active,
+    onObjDistChange: setObjDistState,
+    onIncidenceAngleChange: setIncidenceAngleState,
+  });
 
   const setMode      = useCallback((v) => { setModeState(v);      syncMode(v);      }, [syncMode]);
   const setComponent = useCallback((v) => { setComponentState(v); syncComponent(v); }, [syncComponent]);
@@ -222,19 +228,172 @@ export default function OpticsMirrorLab({ active }) {
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
         />
         {mode === OM.BENCH && (
-          <div className="grid grid-cols-4 gap-2">
-            <TelCard label="Object dist (u)" value={tel.u.toFixed(0)} unit="px" accent={CLR.object} />
-            <TelCard label="Image dist (v)"  value={isFinite(tel.v) ? tel.v.toFixed(0) : "∞"} unit="px" accent={CLR.image} />
-            <TelCard label="Magnification"   value={isFinite(tel.m) ? tel.m.toFixed(2) : "∞"} accent={CLR.accent} />
-            <TelCard label="Image Nature"    value={tel.nature || (tel.real ? "Real & Inv." : "Virtual & Erect")} accent={tel.atInfinity ? CLR.amber : tel.real ? CLR.warn : CLR.neon} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+            {/* CARD 1: OBJECT & LENS */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-red-400 flex items-center gap-1.5">
+                OBJECT & LENS
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-500/10 text-red-300 border border-red-500/20">
+                  Source
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-slate-400">Object dist (u)</p>
+                  <p className="text-xs font-mono font-bold text-red-400">{tel.u !== undefined ? `${tel.u.toFixed(1)} px` : `-${objDist}.0 px`}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Object height (Hₒ)</p>
+                  <p className="text-xs font-mono font-bold text-red-300">{tel.h_o !== undefined ? `${tel.h_o.toFixed(1)} px` : `${objHeight}.0 px`}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Focal length (f)</p>
+                  <p className="text-xs font-mono font-bold text-sky-400">{tel.f !== undefined ? `${tel.f > 0 ? "+" : ""}${tel.f.toFixed(1)} px` : `${focalLen} px`}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Lens Power (P)</p>
+                  <p className="text-xs font-mono font-bold text-emerald-400">{isFinite(tel.power) ? `${tel.power > 0 ? "+" : ""}${tel.power.toFixed(2)} D` : "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: IMAGE DYNAMICS */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 flex items-center gap-1.5">
+                  IMAGE DYNAMICS
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  Result
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-slate-400">Image dist (v)</p>
+                  <p className="text-xs font-mono font-bold text-emerald-400">{isFinite(tel.v) ? `${tel.v > 0 ? "+" : ""}${tel.v.toFixed(1)} px` : "∞"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Image height (Hᵢ)</p>
+                  <p className="text-xs font-mono font-bold text-emerald-300">{isFinite(tel.h_i) ? `${tel.h_i > 0 ? "+" : ""}${tel.h_i.toFixed(1)} px` : "∞"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Magnification (m)</p>
+                  <p className="text-xs font-mono font-bold text-cyan-400">{isFinite(tel.m) ? `${tel.m > 0 ? "+" : ""}${tel.m.toFixed(2)}` : "∞"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Image Scale</p>
+                  <p className="text-xs font-mono font-bold text-amber-300 truncate">{tel.scaleText || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 3: OPTICAL STATE */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 flex items-center gap-1.5">
+                OPTICAL STATE
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                  State
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="col-span-2">
+                  <p className="text-[10px] text-slate-400">Image Nature</p>
+                  <p className="text-xs font-bold text-cyan-300 truncate" title={tel.nature}>
+                    {tel.nature || (tel.real ? "Real & Inverted" : "Virtual & Erect")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Ray Path</p>
+                  <p className="text-xs font-mono font-bold text-slate-200">{tel.pathType || "Diverging"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Deviation (δ)</p>
+                  <p className="text-xs font-mono font-bold text-amber-400">{tel.deviation !== undefined ? `${tel.deviation.toFixed(1)}°` : "—"}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         {mode === OM.REFLECT_REFRACT && (
-          <div className="grid grid-cols-4 gap-2">
-            <TelCard label="Incidence (θi)" value={tel.thetaI !== undefined ? `${tel.thetaI.toFixed(1)}°` : "45.0°"} accent={CLR_O.ray} />
-            <TelCard label="Reflection (θr)" value={tel.thetaR !== undefined ? `${tel.thetaR.toFixed(1)}°` : "45.0°"} accent={CLR_O.ray} />
-            <TelCard label="Refraction (θt)" value={tel.tir ? "TIR" : (tel.thetaT !== undefined && !isNaN(tel.thetaT) ? `${tel.thetaT.toFixed(1)}°` : "—")} accent={tel.tir ? CLR.warn : CLR.neon} />
-            <TelCard label="Critical Angle (θc)" value={tel.thetaC !== undefined && !isNaN(tel.thetaC) ? `${tel.thetaC.toFixed(1)}°` : "N/A"} accent={CLR.amber} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+            {/* CARD 1: INCIDENT LIGHT */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 flex items-center gap-1.5">
+                INCIDENT LIGHT
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-slate-400">Incidence (θᵢ)</p>
+                  <p className="text-xs font-mono font-bold text-amber-400">{tel.thetaI !== undefined ? `${tel.thetaI.toFixed(1)}°` : "45.0°"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Medium 1 (n₁)</p>
+                  <p className="text-xs font-mono font-bold text-cyan-300">{n1.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: REFRACTION & REFLECTION */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 flex items-center gap-1.5">
+                REFRACTION & REFLECTION
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-slate-400">Reflection (θᵣ)</p>
+                  <p className="text-xs font-mono font-bold text-cyan-400">{tel.thetaR !== undefined ? `${tel.thetaR.toFixed(1)}°` : "45.0°"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Refraction (θₜ)</p>
+                  <p className="text-xs font-mono font-bold text-emerald-400">
+                    {tel.tir ? "TIR" : (tel.thetaT !== undefined && !isNaN(tel.thetaT) ? `${tel.thetaT.toFixed(1)}°` : "—")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Medium 2 (n₂)</p>
+                  <p className="text-xs font-mono font-bold text-cyan-300">{n2.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Critical Angle (θ_c)</p>
+                  <p className="text-xs font-mono font-bold text-amber-300">{tel.thetaC !== undefined && !isNaN(tel.thetaC) ? `${tel.thetaC.toFixed(1)}°` : "N/A"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 3: DEVIATION */}
+            <div className="flex flex-col gap-1.5 rounded-xl p-3 border shadow-sm"
+              style={{ background: CLR.panel, borderColor: CLR.border }}>
+              <div className="flex items-center justify-between pb-1 border-b" style={{ borderColor: CLR.border + "88" }}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-rose-400 flex items-center gap-1.5">
+                DEVIATION METRICS
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-slate-400">Deviation (δ)</p>
+                  <p className="text-xs font-mono font-bold text-rose-400">
+                    {tel.deviation !== undefined && !isNaN(tel.deviation) ? `${tel.deviation.toFixed(1)}°` : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400">Optical State</p>
+                  <p className="text-xs font-bold text-emerald-300">{tel.tir ? "Total Reflection" : "Refracting"}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         {mode === OM.EYE && (
@@ -279,8 +438,49 @@ export default function OpticsMirrorLab({ active }) {
                       hint="Or click/drag on top half of canvas" onChange={setIncidenceAngle} accentColor={CLR_O.ray} />
                     <HubSliderRow label="Medium 1 Index (n₁)" value={n1} min={1.00} max={2.50} step={0.01}
                       hint="Refractive index of top medium" onChange={setN1} accentColor={CLR.accent} />
+                    
+                    {/* Medium 1 Presets */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-semibold text-slate-400">Medium 1 Material</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[
+                          { label: "Air", n: 1.00 },
+                          { label: "Water", n: 1.33 },
+                          { label: "Glass", n: 1.52 },
+                        ].map(m => (
+                          <button key={m.label} onClick={() => setN1(m.n)}
+                            className={`px-1.5 py-1 rounded text-[10px] border transition-all ${
+                              Math.abs(n1 - m.n) < 0.01 ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-bold" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200"
+                            }`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <HubSliderRow label="Medium 2 Index (n₂)" value={n2} min={1.00} max={2.50} step={0.01}
                       hint="Refractive index of bottom medium" onChange={setN2} accentColor={CLR.accent} />
+
+                    {/* Medium 2 Presets */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-semibold text-slate-400">Medium 2 Material</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[
+                          { label: "Air", n: 1.00 },
+                          { label: "Water", n: 1.33 },
+                          { label: "Crown", n: 1.52 },
+                          { label: "Flint", n: 1.66 },
+                          { label: "Diamond", n: 2.42 },
+                        ].map(m => (
+                          <button key={m.label} onClick={() => setN2(m.n)}
+                            className={`px-1.5 py-1 rounded text-[10px] border transition-all ${
+                              Math.abs(n2 - m.n) < 0.01 ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-bold" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200"
+                            }`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     
                     {/* Protractor Toggle */}
                     <div className="flex items-center justify-between px-1 py-1">

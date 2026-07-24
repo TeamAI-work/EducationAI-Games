@@ -161,40 +161,42 @@ export default function FormulaOverlay({
           telemetry = {},
         } = data;
 
-        const speed = telemetry.speed ?? (331.3 + 0.606 * temp);
+        const speed = telemetry.v ?? (331.3 + 0.606 * temp);
         const wavelength = telemetry.wavelength ?? (speed / freq);
-        const period = 1 / freq;
-        const omega = 2 * Math.PI * freq;
-        const k = (2 * Math.PI) / wavelength;
+        const period = telemetry.period ?? (1 / freq);
+        const omega = telemetry.omega ?? (2 * Math.PI * freq);
+        const k = telemetry.k ?? ((2 * Math.PI) / wavelength);
+        const nodes = telemetry.nodes ?? 0;
+        const tEcho = telemetry.tEcho;
 
         const formulas = [
           {
             title: "Harmonic Wave Equation",
-            symbolic: "y(x,t) = A · sin(2πf · t - k · x + ϕ)",
-            substitution: `y(x,t) = ${amp.toFixed(2)} · sin(2π(${freq})t - ${k.toFixed(3)}x + ${phase}°)`,
-            description: "Mathematical expression describing longitudinal air pressure oscillations.",
+            symbolic: "y(x,t) = A · sin(ω · t - k · x + ϕ)",
+            substitution: `y(x,t) = ${amp.toFixed(2)} · sin(${omega.toFixed(1)}t - ${k.toFixed(3)}x + ${phase}°)`,
+            description: "Mathematical expression describing longitudinal pressure oscillations.",
             badge: "Wave Model",
           },
           {
             title: "Speed of Sound in Medium (v)",
-            symbolic: medium === "gas" ? "v_air ≈ 331.3 + 0.606 · T_C (m/s)" : "v = f · λ",
-            substitution: `v = ${speed.toFixed(1)} m/s (Medium: ${medium.toUpperCase()}, T = ${temp}°C)`,
+            symbolic: medium === "gas" ? "v_air ≈ 331.3 · √(1 + T / 273.15) (m/s)" : "v = f · λ",
+            substitution: `v = ${speed.toFixed(0)} m/s (Medium: ${medium.toUpperCase()}, T = ${temp}°C)`,
             description: "Velocity of pressure propagation governed by medium elasticity & density.",
             badge: "Wave Velocity",
           },
           {
-            title: "Wavelength (λ)",
-            symbolic: "λ = v / f",
-            substitution: `λ = (${speed.toFixed(1)} m/s) / (${freq} Hz) = ${wavelength.toFixed(2)} m`,
-            description: "Spatial distance between two consecutive crests or compressions.",
-            badge: "Spatial Cycle",
+            title: "Wavelength (λ) & Wave Number (k)",
+            symbolic: "λ = v / f   |   k = 2π / λ",
+            substitution: `λ = (${speed.toFixed(0)} m/s) / (${freq} Hz) = ${wavelength.toFixed(2)} m\nk = 2π / ${wavelength.toFixed(2)} = ${k.toFixed(3)} rad/m`,
+            description: "Spatial distance per cycle and angular wave number per meter.",
+            badge: "Spatial Dynamics",
           },
           {
-            title: "Temporal Period (T) & Angular Frequency (ω)",
-            symbolic: "T = 1 / f   |   ω = 2π · f",
-            substitution: `T = 1 / ${freq} Hz = ${(period * 1000).toFixed(2)} ms\nω = 2π × ${freq} = ${omega.toFixed(1)} rad/s`,
-            description: "Time duration for one complete oscillation cycle.",
-            badge: "Frequency Relations",
+            title: "Temporal Period (T), Angular Frequency (ω) & Echo",
+            symbolic: "T = 1 / f   |   ω = 2π · f   |   t_echo = 2D / v",
+            substitution: `T = 1 / ${freq} Hz = ${period >= 1 ? period.toFixed(2) + " s" : (period * 1000).toFixed(1) + " ms"}\nω = 2π × ${freq} = ${omega.toFixed(1)} rad/s\nStanding Nodes: ${nodes}  |  Echo Time: ${tEcho !== null && tEcho !== undefined ? tEcho.toFixed(3) + " s" : "N/A"}`,
+            description: "Time duration per cycle, angular frequency in rad/s, and round-trip echo time.",
+            badge: "Temporal & Echo",
           },
         ];
 
@@ -271,36 +273,42 @@ export default function FormulaOverlay({
         }
 
         // Default Bench mode
-        const u = telemetry.u ?? 280;
+        const u = telemetry.u ?? -280;
         const v = telemetry.v;
-        const f = telemetry.f ?? 120;
+        const f = telemetry.f ?? -120;
         const m = telemetry.m;
+        const h_o = telemetry.h_o ?? 60;
+        const h_i = telemetry.h_i;
+        const power = telemetry.power ?? (1000 / f);
         const nature = telemetry.nature;
+        const scaleText = telemetry.scaleText;
 
         const formulas = [
           {
             title: "Thin Lens / Mirror Formula",
-            symbolic: "1 / f = 1 / v + 1 / u   ➔   v = (f · u) / (u - f)",
+            symbolic: "1 / f = 1 / v - 1 / u   ➔   v = (f · u) / (f + u)",
             substitution: isFinite(v)
-              ? `v = (${f} · ${u}) / (${u} - ${f}) = ${v.toFixed(1)} px`
+              ? `u = ${u.toFixed(1)} px  |  f = ${f > 0 ? "+" : ""}${f.toFixed(1)} px\nv = (${f.toFixed(1)} · ${u.toFixed(1)}) / (${f.toFixed(1)} + (${u.toFixed(1)})) = ${v > 0 ? "+" : ""}${v.toFixed(1)} px`
               : `v = ∞ (Parallel rays, object at focus f)`,
-            description: "Fundamental relation connecting focal length f, object distance u, and image distance v.",
+            description: "New Cartesian sign convention relation: object distance u is negative in front of optic element.",
             badge: "Lens Formula",
           },
           {
             title: "Linear Magnification (m)",
-            symbolic: "m = - v / u = h_i / h_o",
+            symbolic: "m = v / u = H_i / H_o",
             substitution: isFinite(m)
-              ? `m = - (${v.toFixed(1)}) / (${u}) = ${m.toFixed(2)}\nNature: ${nature || (m < 0 ? "Real & Inverted" : "Virtual & Erect")}`
+              ? `m = (${isFinite(v) ? v.toFixed(1) : "0"}) / (${u.toFixed(1)}) = ${m > 0 ? "+" : ""}${m.toFixed(2)}\nH_o = ${h_o.toFixed(1)} px  |  H_i = ${isFinite(h_i) ? (h_i > 0 ? "+" : "") + h_i.toFixed(1) + " px" : "∞"}\nScale: ${scaleText || "—"}  |  Nature: ${nature || "—"}`
               : `m = ∞ (Infinite magnification)`,
-            description: "Ratio of image size to object size. Negative sign indicates inverted orientation.",
+            description: "Ratio of image height to object height. Negative m indicates inverted orientation.",
             badge: "Magnification",
           },
           {
             title: "Lens Power (P)",
-            symbolic: "P = 1 / f (m) = 1000 / f (mm)",
-            substitution: `P = 1000 / ${f} px = ${(1000 / f).toFixed(2)} Diopters (D)`,
-            description: "Optical power rating of the curved lens or spherical mirror.",
+            symbolic: "P = 1000 / f (in px/mm)",
+            substitution: isFinite(power)
+              ? `P = 1000 / (${f > 0 ? "+" : ""}${f.toFixed(1)} px) = ${power > 0 ? "+" : ""}${power.toFixed(2)} Diopters (D)`
+              : "P = 0 D",
+            description: "Optical refractive power rating in Diopters (D). Negative for diverging, positive for converging.",
             badge: "Power (D)",
           },
         ];

@@ -15,7 +15,7 @@ import PictureMatch from './Components/Grade4/PictureMatch'
 import SequencingTiles from './Components/Grade4/SequencingTiles'
 import FractionPie from './Components/Grade4/FractionPie'
 import FractionCompare from './Components/Grade4/FractionCompare'
-import Hero from './Components/Hero'
+// import Hero from './Components/Hero'
 import Count from './Components/Grade 1/Count'
 import Tracing from './Components/Grade 1/Tracing'
 import NumberArrange from './Components/Grade4/NumberArrange'
@@ -77,7 +77,7 @@ function App() {
         <Route path='/biology/diagram-hub' element={<BiologyModule />}/>
 
         {/* Hero */}
-        <Route path='/hero' element={<Hero />} />
+        {/* <Route path='/hero' element={<Hero />} /> */}
 
       </Routes>
     </BrowserRouter>

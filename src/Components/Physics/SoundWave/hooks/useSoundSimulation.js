@@ -236,31 +236,58 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
   // Redraw on canvas resize
   useEffect(() => { drawFrame(); }, [drawFrame, canvasSize]);
 
+  const updateTelemetryNow = useCallback(() => {
+    const f         = freqRef.current;
+    const tempC     = tempRef.current;
+    const mediumKey = mediumRef.current;
+    const boundary  = boundaryRef.current;
+    const v         = computeSpeedOfSound(mediumKey, tempC);
+    const wl        = f > 0 ? (v / f) : 0;
+    const totalSpatialSpanMeters = Math.max(1, f * 1.5) * wl;
+
+    const period = f > 0 ? (1 / f) : 0;
+    const omega  = 2 * Math.PI * f;
+    const k      = wl > 0 ? (2 * Math.PI / wl) : 0;
+    const nodes  = wl > 0 ? Math.floor((2 * totalSpatialSpanMeters) / wl) : 0;
+
+    const isRigid = boundary === BOUNDARY.RIGID;
+    const tEcho   = (isRigid && v > 0) ? ((2 * totalSpatialSpanMeters) / v) : null;
+
+    const densities = { gas: 1.2, liquid: 1000, solid: 7870 };
+    const density   = densities[mediumKey] || 1.2;
+
+    setTelemetry(p => ({
+      ...p,
+      running:      runningRef.current,
+      wavelength:   wl,
+      v,
+      freq:         f,
+      period,
+      omega,
+      k,
+      nodes,
+      totalSpatialSpanMeters,
+      tempC,
+      mediumKey,
+      density,
+      boundary,
+      tEcho,
+      mission:      missionRef.current,
+      matchPct:     Math.round(matchRef.current.score * 100),
+      matchWon:     matchRef.current.won,
+      cancelRms:    cancelRef.current.rms,
+      cancelWon:    cancelRef.current.won,
+    }));
+  }, []);
+
   // ─── Telemetry poll ──────────────────────────────────────────────────────
   useEffect(() => {
+    updateTelemetryNow();
     const id = setInterval(() => {
-      const f      = freqRef.current;
-      const tempC  = tempRef.current;
-      const medKey = mediumRef.current;
-      const v      = computeSpeedOfSound(medKey, tempC);
-      const wl = v / f;
-      const totalSpatialSpanMeters = Math.max(1, f * 1.5) * wl;
-      setTelemetry({
-        running:      runningRef.current,
-        wavelength:   wl,
-        v,
-        freq:         f,
-        totalSpatialSpanMeters,
-        tempC,
-        mission:      missionRef.current,
-        matchPct:     Math.round(matchRef.current.score * 100),
-        matchWon:     matchRef.current.won,
-        cancelRms:    cancelRef.current.rms,
-        cancelWon:    cancelRef.current.won,
-      });
+      updateTelemetryNow();
     }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [updateTelemetryNow]);
 
   // ─── Public handlers & ref-setters ───────────────────────────────────────
   const handlePlay = useCallback(() => {
@@ -290,22 +317,23 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
       cancelRms: 1, cancelWon: false,
     }));
     idleRafRef.current = requestAnimationFrame(idleLoopRef.current);
-  }, []);
+    updateTelemetryNow();
+  }, [updateTelemetryNow]);
 
   // Ref-setters — update ref immediately, RAF picks it up next frame
-  const syncFreq     = useCallback((v) => { freqRef.current     = v;    }, []);
-  const syncAmp      = useCallback((v) => { ampRef.current      = v;    }, []);
-  const syncPhase    = useCallback((v) => { phaseRef.current    = v * Math.PI / 180; }, []); // degrees→rad
-  const syncMedium   = useCallback((v) => { mediumRef.current   = v;    }, []);
-  const syncTemp     = useCallback((v) => { tempRef.current     = v;    }, []);
-  const syncBoundary = useCallback((v) => { boundaryRef.current = v;    }, []);
+  const syncFreq     = useCallback((v) => { freqRef.current     = v;                 updateTelemetryNow(); }, [updateTelemetryNow]);
+  const syncAmp      = useCallback((v) => { ampRef.current      = v;                 updateTelemetryNow(); }, [updateTelemetryNow]);
+  const syncPhase    = useCallback((v) => { phaseRef.current    = v * Math.PI / 180; updateTelemetryNow(); }, [updateTelemetryNow]);
+  const syncMedium   = useCallback((v) => { mediumRef.current   = v;                 updateTelemetryNow(); }, [updateTelemetryNow]);
+  const syncTemp     = useCallback((v) => { tempRef.current     = v;                 updateTelemetryNow(); }, [updateTelemetryNow]);
+  const syncBoundary = useCallback((v) => { boundaryRef.current = v;                 updateTelemetryNow(); }, [updateTelemetryNow]);
   const syncMission  = useCallback((v) => {
     missionRef.current = v;
     matchRef.current   = { score: 0, lockTime: 0, won: false };
     cancelRef.current  = { rms: 1, won: false };
     if (v === MISSION.RESONANCE) buildTarget();
-    setTelemetry(p => ({ ...p, mission: v, matchPct: 0, matchWon: false, cancelRms: 1, cancelWon: false }));
-  }, [buildTarget]);
+    updateTelemetryNow();
+  }, [buildTarget, updateTelemetryNow]);
 
   return {
     telemetry,

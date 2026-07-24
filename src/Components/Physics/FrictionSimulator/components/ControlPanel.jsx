@@ -191,7 +191,7 @@ export default function ControlPanel({
         </FrictionSection>
 
         {/* ── Vector legend ── */}
-        <div className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: CLR.border }}>
+        {/* <div className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: CLR.border }}>
           <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>
             Vector Legend
           </p>
@@ -206,7 +206,7 @@ export default function ControlPanel({
               {item.label}
             </div>
           ))}
-        </div>
+        </div> */}
 
       </div>
     </div>

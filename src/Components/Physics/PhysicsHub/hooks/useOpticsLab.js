@@ -8,13 +8,24 @@ import {
 } from "../utils/opticsDrawing";
 
 // ─── Mirror / Lens formula (New Cartesian Sign Convention) ───────────────────
-function calcImage(type, focalPx, uPx) {
+// ─── Mirror / Lens formula (New Cartesian Sign Convention) ───────────────────
+export function calcOpticsMetrics(type, focalPx, uPx, objH) {
   const isMirror = type.includes("mirror");
-  const isConcave = type.includes("concave");
 
+  // Cartesian sign conventions:
+  // Real object in front of lens/mirror is at negative u: u = -Math.abs(uPx)
   const u = -Math.abs(uPx);
 
-  const fSigned = isConcave ? -Math.abs(focalPx) : Math.abs(focalPx);
+  // Signed focal length:
+  // Concave lens: -f (diverging lens)
+  // Convex lens: +f (converging lens)
+  // Concave mirror: -f (converging mirror)
+  // Convex mirror: +f (diverging mirror)
+  let fSigned;
+  if (type === COMPONENTS.CONCAVE_LENS) fSigned = -Math.abs(focalPx);
+  else if (type === COMPONENTS.CONVEX_LENS) fSigned = Math.abs(focalPx);
+  else if (type === COMPONENTS.CONCAVE_MIRROR) fSigned = -Math.abs(focalPx);
+  else fSigned = Math.abs(focalPx); // convex mirror
 
   let vPx;
   if (isMirror) {
@@ -28,7 +39,47 @@ function calcImage(type, focalPx, uPx) {
   const erect = m > 0;
   const atInfinity = !isFinite(vPx) || Math.abs(vPx) > 1e6;
 
-  return { vPx, m, real, erect, atInfinity };
+  // Power P in Diopters (P = 1000 / fSigned)
+  const power = 1000 / fSigned;
+
+  // Image height (signed)
+  const h_i = atInfinity ? NaN : objH * m;
+
+  // Scale ratio / relative scale
+  let scaleText = "Infinite";
+  if (!atInfinity && isFinite(m)) {
+    const absM = Math.abs(m);
+    const pct = Math.round(absM * 100);
+    if (absM < 0.99) scaleText = `Reduced (${pct}%)`;
+    else if (absM > 1.01) scaleText = `Enlarged (${pct}%)`;
+    else scaleText = `Same Size (100%)`;
+  }
+
+  // Path Type
+  const pathType = (type === COMPONENTS.CONCAVE_LENS || type === COMPONENTS.CONVEX_MIRROR)
+    ? "Diverging"
+    : "Converging";
+
+  // Ray deviation angle (approx marginal ray deflection in degrees)
+  const devRad = Math.atan2(objH, Math.abs(fSigned));
+  const deviation = devRad * (180 / Math.PI);
+
+  return {
+    u,
+    v: vPx,
+    f: fSigned,
+    power,
+    m,
+    h_o: objH,
+    h_i,
+    scaleText,
+    real,
+    erect,
+    atInfinity,
+    nature: imageNature(real, erect, atInfinity),
+    pathType,
+    deviation,
+  };
 }
 
 function isDivergingType(type) {
@@ -51,7 +102,15 @@ function imageNature(real, erect, atInfinity) {
   return "Virtual & Inverted";
 }
 
-export function useOpticsLab({ canvasRef, canvasSize, active }) {
+export function useOpticsLab(options = {}) {
+  const {
+    canvasRef,
+    canvasSize,
+    active,
+    onObjDistChange,
+    onIncidenceAngleChange,
+  } = options;
+
   const rafRef = useRef(null);
 
   const modeRef = useRef(OPTIC_MODES.BENCH);
@@ -69,15 +128,61 @@ export function useOpticsLab({ canvasRef, canvasSize, active }) {
   const incidenceAngleRef = useRef(45);
   const showProtractorRef = useRef(true);
 
+  const onObjDistChangeRef = useRef(onObjDistChange);
+  useEffect(() => { onObjDistChangeRef.current = onObjDistChange; }, [onObjDistChange]);
+
+  const onIncidenceAngleChangeRef = useRef(onIncidenceAngleChange);
+  useEffect(() => { onIncidenceAngleChangeRef.current = onIncidenceAngleChange; }, [onIncidenceAngleChange]);
+
   const draggingRef = useRef(false);
 
   const sizeRef = useRef(canvasSize);
   useEffect(() => { sizeRef.current = canvasSize; }, [canvasSize]);
 
   const [telemetry, setTelemetry] = useState({
-    u: 280, v: 0, f: 120, m: 0, real: true, erect: false,
-    atInfinity: false, nature: "Real & Inverted", onRetina: false,
+    u: -280, v: -85.7, f: -120, power: -8.33, m: 0.31, h_o: 60, h_i: 18.4,
+    scaleText: "Reduced (31%)", real: false, erect: true, atInfinity: false,
+    nature: "Virtual & Erect", pathType: "Diverging", deviation: 26.6, onRetina: false,
   });
+
+  const updateTelemetry = useCallback(() => {
+    if (modeRef.current === OPTIC_MODES.BENCH) {
+      const fPx = focalLenRef.current;
+      const type = componentRef.current;
+      const uPx = clampObjDist(type, fPx, objDistRef.current);
+      const objH = objHeightRef.current;
+      const metrics = calcOpticsMetrics(type, fPx, uPx, objH);
+      setTelemetry(prev => ({ ...prev, ...metrics, onRetina: false }));
+    } else if (modeRef.current === OPTIC_MODES.REFLECT_REFRACT) {
+      const n1 = n1Ref.current;
+      const n2 = n2Ref.current;
+      const thetaI = incidenceAngleRef.current;
+      const thetaR = thetaI;
+      let thetaT = 0;
+      let tir = false;
+      const ratio = (n1 * Math.sin(thetaI * Math.PI / 180)) / n2;
+      if (ratio > 1) {
+        tir = true;
+        thetaT = NaN;
+      } else {
+        thetaT = Math.asin(ratio) * 180 / Math.PI;
+      }
+      const thetaC = n1 > n2 ? Math.asin(n2 / n1) * 180 / Math.PI : NaN;
+      const deviation = tir ? (180 - 2 * thetaI) : Math.abs(thetaI - (isNaN(thetaT) ? 0 : thetaT));
+      setTelemetry(prev => ({
+        ...prev,
+        thetaI, thetaR, thetaT, thetaC, tir, n1, n2, deviation, onRetina: false,
+      }));
+    } else {
+      const W = sizeRef.current.w || 800;
+      const H = sizeRef.current.h || 420;
+      const { onRetina } = calcEyeConvergence(
+        W, H, defectRef.current, corrDioptRef.current,
+        corrActiveRef.current && !!corrTypeRef.current, corrTypeRef.current,
+      );
+      setTelemetry(prev => ({ ...prev, onRetina }));
+    }
+  }, []);
 
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
@@ -92,9 +197,10 @@ export function useOpticsLab({ canvasRef, canvasSize, active }) {
 
     if (mode === OPTIC_MODES.BENCH) {
       drawAxis(ctx, W, H);
-      const lensX = W / 2;
-      const fPx = focalLenRef.current;
       const type = componentRef.current;
+      const isMirror = type.includes("mirror");
+      const lensX = isMirror ? W * 0.68 : W / 2;
+      const fPx = focalLenRef.current;
       const uPx = clampObjDist(type, fPx, objDistRef.current);
       const objX = lensX - uPx;
       const objH = objHeightRef.current;
@@ -102,21 +208,19 @@ export function useOpticsLab({ canvasRef, canvasSize, active }) {
       drawOpticElement(ctx, W, H, type, fPx, lensX);
       drawObject(ctx, objX, H, objH);
 
-      const { vPx, m, real, erect, atInfinity } = calcImage(type, fPx, uPx);
+      const metrics = calcOpticsMetrics(type, fPx, uPx, objH);
+      const { v: vPx, erect, atInfinity, real } = metrics;
+      const imgH = isFinite(vPx) ? objH * metrics.m : NaN;
 
       if (!atInfinity) {
         const imgX = lensX + vPx;
-        const imgH = objH * Math.abs(m) * (erect ? 1 : -1);
         drawRays(ctx, W, H, type, lensX, fPx, objX, objH, imgX, imgH, real);
-        drawImage(ctx, imgX, H, imgH, real, !real);
+        drawImage(ctx, imgX, H, imgH, real, !real, W);
       } else {
         drawRays(ctx, W, H, type, lensX, fPx, objX, objH, NaN, NaN, false);
       }
 
-      drawOpticsTelemetry(ctx, W, H, {
-        u: uPx, v: vPx, f: fPx, m, real, erect, atInfinity,
-        nature: imageNature(real, erect, atInfinity),
-      });
+      drawOpticsTelemetry(ctx, W, H, metrics);
 
     } else if (mode === OPTIC_MODES.REFLECT_REFRACT) {
       const n1 = n1Ref.current;
@@ -168,63 +272,14 @@ export function useOpticsLab({ canvasRef, canvasSize, active }) {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [active, loop]);
 
-  useEffect(() => { drawFrame(); }, [drawFrame, canvasSize]);
+  useEffect(() => { drawFrame(); updateTelemetry(); }, [drawFrame, canvasSize, updateTelemetry]);
 
   useEffect(() => {
     const id = setInterval(() => {
-      if (modeRef.current === OPTIC_MODES.BENCH) {
-        const fPx = focalLenRef.current;
-        const type = componentRef.current;
-        const uPx = clampObjDist(type, fPx, objDistRef.current);
-        const { vPx, m, real, erect, atInfinity } = calcImage(type, fPx, uPx);
-        setTelemetry(prev => ({
-          ...prev,
-          u: uPx, v: vPx, f: fPx, m, real, erect, atInfinity,
-          nature: imageNature(real, erect, atInfinity),
-          onRetina: false,
-        }));
-      } else if (modeRef.current === OPTIC_MODES.REFLECT_REFRACT) {
-        const n1 = n1Ref.current;
-        const n2 = n2Ref.current;
-        const thetaI = incidenceAngleRef.current;
-
-        // Snell's Law
-        const thetaR = thetaI;
-        let thetaT = 0;
-        let tir = false;
-        const ratio = (n1 * Math.sin(thetaI * Math.PI / 180)) / n2;
-        if (ratio > 1) {
-          tir = true;
-          thetaT = NaN;
-        } else {
-          thetaT = Math.asin(ratio) * 180 / Math.PI;
-        }
-
-        const thetaC = n1 > n2 ? Math.asin(n2 / n1) * 180 / Math.PI : NaN;
-
-        setTelemetry(prev => ({
-          ...prev,
-          thetaI,
-          thetaR,
-          thetaT,
-          thetaC,
-          tir,
-          n1,
-          n2,
-          onRetina: false,
-        }));
-      } else {
-        const W = sizeRef.current.w || 800;
-        const H = sizeRef.current.h || 420;
-        const { onRetina } = calcEyeConvergence(
-          W, H, defectRef.current, corrDioptRef.current,
-          corrActiveRef.current && !!corrTypeRef.current, corrTypeRef.current,
-        );
-        setTelemetry(prev => ({ ...prev, onRetina }));
-      }
+      updateTelemetry();
     }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [updateTelemetry]);
 
   const handleMouseMove = useCallback((e) => {
     if (!draggingRef.current) return;
@@ -237,38 +292,51 @@ export function useOpticsLab({ canvasRef, canvasSize, active }) {
     const mouseY = (e.clientY - rect.top) * (H / rect.height);
 
     if (modeRef.current === OPTIC_MODES.BENCH) {
-      const lensX = W / 2;
+      const type = componentRef.current;
+      const isMirror = type.includes("mirror");
+      const lensX = isMirror ? W * 0.68 : W / 2;
       const dist = Math.abs(mouseX - lensX);
-      objDistRef.current = clampObjDist(componentRef.current, focalLenRef.current, dist);
+      const clampedDist = clampObjDist(type, focalLenRef.current, dist);
+      objDistRef.current = clampedDist;
+      updateTelemetry();
+      if (onObjDistChangeRef.current) {
+        onObjDistChangeRef.current(Math.round(clampedDist));
+      }
     } else if (modeRef.current === OPTIC_MODES.REFLECT_REFRACT) {
       const dx = mouseX - W / 2;
       const dy = mouseY - H / 2;
-      if (dy < 0) { // Dragging is only allowed in the top half
+      if (dy < 0) {
         const theta_rad = Math.atan2(Math.abs(dx), -dy);
         const theta_deg = theta_rad * 180 / Math.PI;
-        incidenceAngleRef.current = Math.min(85, Math.max(0, theta_deg));
+        const clampedAngle = Math.min(85, Math.max(0, theta_deg));
+        incidenceAngleRef.current = clampedAngle;
+        updateTelemetry();
+        if (onIncidenceAngleChangeRef.current) {
+          onIncidenceAngleChangeRef.current(Math.round(clampedAngle));
+        }
       }
     }
-  }, [canvasRef]);
+  }, [canvasRef, updateTelemetry]);
 
   const handleMouseDown = useCallback(() => { draggingRef.current = true; }, []);
   const handleMouseUp = useCallback(() => { draggingRef.current = false; }, []);
 
-  const syncMode = useCallback((v) => { modeRef.current = v; }, []);
-  const syncComponent = useCallback((v) => { componentRef.current = v; }, []);
-  const syncFocal = useCallback((v) => { focalLenRef.current = v; }, []);
+  const syncMode = useCallback((v) => { modeRef.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncComponent = useCallback((v) => { componentRef.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncFocal = useCallback((v) => { focalLenRef.current = v; updateTelemetry(); }, [updateTelemetry]);
   const syncObjDist = useCallback((v) => {
     objDistRef.current = clampObjDist(componentRef.current, focalLenRef.current, v);
-  }, []);
-  const syncObjHeight = useCallback((v) => { objHeightRef.current = v; }, []);
-  const syncDefect = useCallback((v) => { defectRef.current = v; }, []);
-  const syncCorrType = useCallback((v) => { corrTypeRef.current = v; corrActiveRef.current = !!v; }, []);
-  const syncCorrDiopt = useCallback((v) => { corrDioptRef.current = v; }, []);
+    updateTelemetry();
+  }, [updateTelemetry]);
+  const syncObjHeight = useCallback((v) => { objHeightRef.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncDefect = useCallback((v) => { defectRef.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncCorrType = useCallback((v) => { corrTypeRef.current = v; corrActiveRef.current = !!v; updateTelemetry(); }, [updateTelemetry]);
+  const syncCorrDiopt = useCallback((v) => { corrDioptRef.current = v; updateTelemetry(); }, [updateTelemetry]);
 
-  const syncN1 = useCallback((v) => { n1Ref.current = v; }, []);
-  const syncN2 = useCallback((v) => { n2Ref.current = v; }, []);
-  const syncIncidenceAngle = useCallback((v) => { incidenceAngleRef.current = v; }, []);
-  const syncShowProtractor = useCallback((v) => { showProtractorRef.current = v; }, []);
+  const syncN1 = useCallback((v) => { n1Ref.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncN2 = useCallback((v) => { n2Ref.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncIncidenceAngle = useCallback((v) => { incidenceAngleRef.current = v; updateTelemetry(); }, [updateTelemetry]);
+  const syncShowProtractor = useCallback((v) => { showProtractorRef.current = v; updateTelemetry(); }, [updateTelemetry]);
 
   return {
     telemetry,

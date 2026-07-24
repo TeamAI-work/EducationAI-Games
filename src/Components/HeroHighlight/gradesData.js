@@ -28,15 +28,5 @@ export const GRADES = [
     headlinePre: 'From syllabus to',
     headlineHighlight: 'strategic clarity',
     sub: 'Mock tests. Marking schemes. Ready.',
-  },
-  {
-    id: 'g4',
-    label: 'Grades 11–12',
-    color: '#fde68a',
-    colorDark: 'rgba(253,230,138,0.20)',
-    border: 'rgba(253,230,138,0.5)',
-    headlinePre: 'Engineer',
-    headlineHighlight: 'your future',
-    sub: 'Multi-source RAG. LaTeX. Cited.',
-  },
+  }
 ];

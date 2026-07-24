@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Zap, ToggleLeft, ShieldAlert, BookOpen, Trash2, RotateCcw, 
   HelpCircle, Compass, CheckCircle2, AlertTriangle, ArrowRight,
-  ChevronDown, ChevronUp, BarChart2, Settings
+  ChevronDown, ChevronUp, BarChart2, Settings, Flame, Activity, RefreshCw
 } from "lucide-react";
 import { CLR } from "../constants/hubConstants";
 import LabCanvas from "./LabCanvas";
@@ -1170,21 +1170,72 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { voltages, success, isShortCircuit } = solverResults;
 
-  // 1. Calculate global parameters
+  // Accumulated Energy (E) and Per-component Heat (Q) tracking
+  const [energyJoules, setEnergyJoules] = useState(0);
+  const [heatJoules, setHeatJoules] = useState({});
+  const lastTickRef = useRef(Date.now());
+
+  // Calculate global electrical metrics
   const batteries = components.filter(c => c.type === "battery");
   const vSource = batteries.length > 0 ? (batteries[0].value || 9.0) : 0;
   
-  // Total current is the sum of currents leaving positive terminals of all batteries
+  // Total current leaving battery positive terminals
   const iTotal = success ? batteries.reduce((sum, b) => sum + Math.abs(currents[b.id] || 0), 0) : 0;
+  const pSupplied = success ? batteries.reduce((sum, b) => sum + (powers[b.id] || 0), 0) : 0;
+  
+  // Load dissipation (useful power in resistors, bulbs, wires)
+  const loads = components.filter(c => c.type !== "battery");
+  const pLoads = success ? loads.reduce((sum, c) => sum + (powers[c.id] || 0), 0) : 0;
   const pTotal = success ? components.reduce((sum, c) => sum + (powers[c.id] || 0), 0) : 0;
-  const rEq = iTotal > 0.005 ? (vSource / iTotal) : null;
+
+  const rEq = (success && iTotal > 0.005) ? (vSource / iTotal) : null;
+  const isClosedLoop = success && iTotal > 0.005;
+  const isOvercurrent = isShortCircuit || (rEq !== null && rEq < 0.1);
+
+  // Circuit efficiency η = (Power dissipated in loads / Total power supplied) * 100%
+  const efficiency = pSupplied > 0 ? Math.min(100, Math.max(0, (pLoads / pSupplied) * 100)) : 0;
+
+  // Active loads count (resistors or bulbs drawing current > 1mA)
+  const activeLoadsCount = components.filter(c => 
+    (c.type === "resistor" || c.type === "bulb") && Math.abs(currents[c.id] || 0) > 0.001
+  ).length;
+
+  // Continuous Energy & Heat Accumulation loop
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const dt = (now - lastTickRef.current) / 1000;
+      lastTickRef.current = now;
+
+      if (success && isClosedLoop && pTotal > 0 && dt > 0 && dt < 1) {
+        setEnergyJoules(prev => prev + pLoads * dt);
+
+        setHeatJoules(prev => {
+          const next = { ...prev };
+          components.forEach(c => {
+            const p = powers[c.id] || 0;
+            if (c.type !== "battery" && p > 0) {
+              next[c.id] = (next[c.id] || 0) + p * dt;
+            }
+          });
+          return next;
+        });
+      }
+    }, 100);
+    return () => clearInterval(timer);
+  }, [success, isClosedLoop, pLoads, pTotal, components, powers]);
+
+  const handleResetEnergy = () => {
+    setEnergyJoules(0);
+    setHeatJoules({});
+  };
 
   return (
     <div
       className="rounded-xl border p-2.5 transition-all flex flex-col gap-2 shrink-0"
       style={{ background: CLR.panel, borderColor: CLR.border }}
     >
-      {/* Header bar */}
+      {/* Top Header bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-3 overflow-hidden flex-1 flex-wrap">
           <div className="flex items-center gap-1.5 shrink-0 select-none">
@@ -1192,6 +1243,27 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: CLR.text }}>
               Circuit Telemetry
             </span>
+          </div>
+
+          {/* Quick status badges */}
+          <div className="flex items-center gap-1.5 text-[10px] font-mono">
+            <span className={`px-2 py-0.5 rounded font-bold border ${
+              isClosedLoop 
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+            }`}>
+              {isClosedLoop ? "🟢 CLOSED (Complete)" : "🔴 OPEN (Broken)"}
+            </span>
+
+            {isOvercurrent ? (
+              <span className="px-2 py-0.5 rounded font-bold border bg-rose-500/20 border-rose-500/50 text-rose-300 animate-pulse flex items-center gap-1">
+                <span>⚠️</span> OVERCURRENT
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded font-bold border bg-slate-900 border-slate-700 text-slate-300">
+                ✓ NORMAL
+              </span>
+            )}
           </div>
 
           {!isExpanded && (
@@ -1213,16 +1285,22 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
                 accent={CLR.accent} 
               />
               <CompactTelemetryMetric 
-                label="Total Power" 
-                value={pTotal.toFixed(2)} 
+                label="Power" 
+                value={pLoads.toFixed(2)} 
                 unit="W" 
                 accent={CLR.bulb} 
               />
               <CompactTelemetryMetric 
-                label="Equiv. R" 
-                value={rEq !== null ? `${rEq.toFixed(1)}` : "∞"} 
-                unit="Ω" 
+                label="Energy (E)" 
+                value={energyJoules >= 1000 ? `${(energyJoules / 1000).toFixed(2)} k` : energyJoules.toFixed(1)} 
+                unit="J" 
                 accent={CLR.amber} 
+              />
+              <CompactTelemetryMetric 
+                label="Efficiency" 
+                value={`${efficiency.toFixed(1)}`} 
+                unit="%" 
+                accent="#38bdf8" 
               />
             </motion.div>
           )}
@@ -1262,64 +1340,110 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
           >
             <div className="pt-2.5 border-t border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3 mt-1 text-xs">
               
-              {/* Detailed global summary cards */}
+              {/* Detailed Global Stats Panel */}
               <div className="flex flex-col gap-2">
-                <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: CLR.muted }}>
-                  Global Stats
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">
+                    Global Stats & Safety
+                  </p>
+                  <button
+                    onClick={handleResetEnergy}
+                    title="Reset energy accumulator"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border border-slate-800 text-slate-400 hover:text-amber-300 hover:border-amber-500/40 transition-all"
+                  >
+                    <RefreshCw size={10} /> Reset E
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
-                    <span className="text-[8px] uppercase font-semibold" style={{ color: CLR.muted }}>EMF Voltage</span>
-                    <span className="text-sm font-bold font-mono" style={{ color: CLR.neon }}>{vSource.toFixed(1)} V</span>
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">EMF Voltage</span>
+                    <span className="text-sm font-bold font-mono text-emerald-400">{vSource.toFixed(1)} V</span>
                   </div>
                   <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
-                    <span className="text-[8px] uppercase font-semibold" style={{ color: CLR.muted }}>Total Current</span>
-                    <span className="text-sm font-bold font-mono" style={{ color: CLR.accent }}>{iTotal.toFixed(3)} A</span>
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">Total Current</span>
+                    <span className="text-sm font-bold font-mono text-cyan-400">{iTotal.toFixed(3)} A</span>
                   </div>
                   <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
-                    <span className="text-[8px] uppercase font-semibold" style={{ color: CLR.muted }}>Power Draw</span>
-                    <span className="text-sm font-bold font-mono" style={{ color: CLR.bulb }}>{pTotal.toFixed(2)} W</span>
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">Power Dissipation</span>
+                    <span className="text-sm font-bold font-mono text-amber-300">{pLoads.toFixed(2)} W</span>
                   </div>
                   <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
-                    <span className="text-[8px] uppercase font-semibold" style={{ color: CLR.muted }}>Total Load</span>
-                    <span className="text-sm font-bold font-mono" style={{ color: CLR.amber }}>
-                      {rEq !== null ? `${rEq.toFixed(1)} Ω` : "∞ (Open)"}
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">Total Load R</span>
+                    <span className="text-sm font-bold font-mono text-amber-400">
+                      {rEq !== null ? `${rEq.toFixed(2)} Ω` : "∞ (Open)"}
+                    </span>
+                  </div>
+                  <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">Energy Consumed (E)</span>
+                    <span className="text-sm font-bold font-mono text-purple-400">
+                      {energyJoules >= 1000 ? `${(energyJoules / 1000).toFixed(2)} kJ` : `${energyJoules.toFixed(1)} J`}
+                    </span>
+                  </div>
+                  <div className="p-2 border rounded-lg flex flex-col" style={{ background: CLR.bg, borderColor: CLR.border }}>
+                    <span className="text-[8px] uppercase font-semibold text-slate-400">Circuit Efficiency</span>
+                    <span className="text-sm font-bold font-mono text-sky-400">{efficiency.toFixed(1)}%</span>
+                  </div>
+                </div>
+
+                {/* Status Badges box */}
+                <div className="p-2 border rounded-lg flex flex-col gap-1.5 mt-0.5" style={{ background: CLR.bg, borderColor: CLR.border }}>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-slate-400 font-semibold">Continuity:</span>
+                    <span className={`font-bold ${isClosedLoop ? "text-emerald-400" : "text-rose-400"}`}>
+                      {isClosedLoop ? "CLOSED (Complete)" : "OPEN (Broken)"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-slate-400 font-semibold">Safety State:</span>
+                    <span className={`font-bold ${isOvercurrent ? "text-rose-400" : "text-emerald-400"}`}>
+                      {isOvercurrent ? "⚠️ OVERCURRENT (<0.1Ω)" : "✓ NORMAL LOAD"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Component log list */}
+              {/* Placed Component Breakdown Table */}
               <div className="md:col-span-2 flex flex-col gap-2">
-                <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: CLR.muted }}>
-                  Placed Component Breakdown
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">
+                    Placed Component Breakdown
+                  </p>
+                  <span className="text-[9px] font-mono text-slate-400">
+                    {components.length} Items Placed
+                  </span>
+                </div>
+
                 <div 
-                  className="border rounded-lg overflow-y-auto max-h-24"
+                  className="border rounded-lg overflow-y-auto max-h-56 font-mono"
                   style={{ background: CLR.bg, borderColor: CLR.border }}
                 >
                   <table className="w-full text-[10px] text-left border-collapse">
-                    <thead>
-                      <tr className="border-b font-semibold" style={{ borderColor: CLR.border, color: CLR.muted }}>
-                        <th className="p-1 px-2">Component</th>
-                        <th className="p-1 text-center">Nodes</th>
-                        <th className="p-1 text-right">Setting</th>
-                        <th className="p-1 text-right">Current</th>
-                        <th className="p-1 text-right">V Drop</th>
-                        <th className="p-1 text-right">Power</th>
+                    <thead className="sticky top-0 z-10 bg-slate-900 border-b" style={{ borderColor: CLR.border, color: CLR.muted }}>
+                      <tr className="font-semibold">
+                        <th className="p-1.5 px-2">Component</th>
+                        <th className="p-1.5 text-center">Health / State</th>
+                        <th className="p-1.5 text-center">Direction</th>
+                        <th className="p-1.5 text-right">Setting</th>
+                        <th className="p-1.5 text-right">Current (I)</th>
+                        <th className="p-1.5 text-right">V Drop</th>
+                        <th className="p-1.5 text-right">Signed Power</th>
+                        <th className="p-1.5 text-right">Heat (Q)</th>
                       </tr>
                     </thead>
-                    <tbody className="font-mono divide-y divide-slate-800" style={{ borderColor: CLR.border }}>
+                    <tbody className="divide-y divide-slate-800" style={{ borderColor: CLR.border }}>
                       {components.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-2 text-center" style={{ color: CLR.muted }}>
-                            No components on the board.
+                          <td colSpan={8} className="p-3 text-center text-slate-400">
+                            No components on the breadboard. Select components from the left menu to build a circuit.
                           </td>
                         </tr>
                       ) : (
                         components.map(c => {
-                          const i = success ? (currents[c.id] || 0) : 0;
-                          const p = success ? (powers[c.id] || 0) : 0;
+                          const iSigned = success ? (currents[c.id] || 0) : 0;
+                          const iMag = Math.abs(iSigned);
+                          const pAbs = success ? (powers[c.id] || 0) : 0;
+                          const qHeat = heatJoules[c.id] || 0;
                           
                           // Calculate voltage drop V = I * R (or EMF directly for battery)
                           let r = 0;
@@ -1327,27 +1451,78 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
                           else if (c.type === "wire" || c.type === "ammeter") r = 0.02;
                           else if (c.type === "switch") r = c.state?.open ? 1e9 : 0.02;
 
-                          const vDrop = c.type === "battery" ? (c.value || 9.0) : Math.abs(i) * r;
+                          const vDrop = c.type === "battery" ? (c.value || 9.0) : iMag * r;
+
+                          // Current direction string
+                          let dirText = `${c.nodeA} ↔ ${c.nodeB}`;
+                          if (iSigned > 0.0001) dirText = `${c.nodeA} → ${c.nodeB}`;
+                          else if (iSigned < -0.0001) dirText = `${c.nodeB} → ${c.nodeA}`;
+
+                          // Component health / status badge
+                          let statusBadge = null;
+                          if (c.type === "bulb") {
+                            if (c.state?.burnt) statusBadge = <span className="text-rose-400 font-bold">🔥 BLOWN</span>;
+                            else if (iMag > 0.001) statusBadge = <span className="text-amber-300 font-bold">💡 LIT</span>;
+                            else statusBadge = <span className="text-slate-500">UNLIT</span>;
+                          } else if (c.type === "switch") {
+                            if (c.state?.open) statusBadge = <span className="text-rose-400 font-bold">🔓 OPEN</span>;
+                            else statusBadge = <span className="text-emerald-400 font-bold">🔒 CLOSED</span>;
+                          } else if (c.type === "battery") {
+                            statusBadge = iMag > 0.001 ? <span className="text-emerald-400 font-bold">🔋 SUPPLY</span> : <span className="text-slate-500">IDLE</span>;
+                          } else if (c.type === "resistor") {
+                            statusBadge = iMag > 0.001 ? <span className="text-cyan-300 font-bold">⚡ ACTIVE</span> : <span className="text-slate-500">IDLE</span>;
+                          } else {
+                            statusBadge = <span className="text-slate-400">✓ OK</span>;
+                          }
+
+                          // Signed Power Convention: +P for supply (battery), -P for load (resistors, bulbs, etc.)
+                          const isSupply = c.type === "battery";
+                          const signedPowerStr = pAbs > 0.001 
+                            ? (isSupply ? `+${pAbs.toFixed(2)} W` : `-${pAbs.toFixed(2)} W`)
+                            : "0.00 W";
 
                           return (
-                            <tr key={c.id} style={{ color: CLR.text }}>
-                              <td className="p-1 px-2 font-semibold capitalize" style={{ color: c.type === "battery" ? CLR.neon : (c.type === "bulb" ? CLR.bulb : CLR.text) }}>
-                                {c.type}
+                            <tr key={c.id} className="hover:bg-slate-800/40 transition-colors" style={{ color: CLR.text }}>
+                              {/* Component Type */}
+                              <td className="p-1.5 px-2 font-semibold capitalize flex items-center gap-1" 
+                                style={{ color: c.type === "battery" ? CLR.neon : (c.type === "bulb" ? CLR.bulb : CLR.text) }}>
+                                <span>{c.type === "battery" ? "🔋" : c.type === "bulb" ? "💡" : c.type === "resistor" ? "🧱" : c.type === "switch" ? "⚡" : "🔌"}</span>
+                                <span>{c.type}</span>
                               </td>
-                              <td className="p-1 text-center" style={{ color: CLR.muted }}>
-                                {c.nodeA} ➜ {c.nodeB}
+
+                              {/* Health / State */}
+                              <td className="p-1.5 text-center">
+                                {statusBadge}
                               </td>
-                              <td className="p-1 text-right">
-                                {c.type === "battery" ? `${c.value}V` : (c.type === "resistor" || c.type === "bulb" ? `${c.value}Ω` : (c.type === "switch" ? (c.state?.open ? "Open" : "Closed") : "—"))}
+
+                              {/* Node Direction */}
+                              <td className="p-1.5 text-center text-slate-400 text-[9px]">
+                                {dirText}
                               </td>
-                              <td className="p-1 text-right" style={{ color: CLR.accent }}>
-                                {Math.abs(i).toFixed(3)}A
+
+                              {/* Setting */}
+                              <td className="p-1.5 text-right">
+                                {c.type === "battery" ? `${c.value}V` : (c.type === "resistor" || c.type === "bulb" ? `${c.value}Ω` : (c.type === "switch" ? (c.state?.open ? "Open" : "Closed") : "0.02Ω"))}
                               </td>
-                              <td className="p-1 text-right" style={{ color: CLR.neon }}>
-                                {vDrop.toFixed(2)}V
+
+                              {/* Current */}
+                              <td className="p-1.5 text-right font-bold" style={{ color: CLR.accent }}>
+                                {iMag.toFixed(3)} A
                               </td>
-                              <td className="p-1 text-right" style={{ color: CLR.amber }}>
-                                {p.toFixed(2)}W
+
+                              {/* Voltage drop */}
+                              <td className="p-1.5 text-right" style={{ color: CLR.neon }}>
+                                {vDrop.toFixed(2)} V
+                              </td>
+
+                              {/* Signed Power */}
+                              <td className="p-1.5 text-right font-bold" style={{ color: isSupply ? CLR.neon : CLR.amber }}>
+                                {signedPowerStr}
+                              </td>
+
+                              {/* Heat / Energy Q */}
+                              <td className="p-1.5 text-right text-rose-300">
+                                {isSupply ? "—" : `${qHeat.toFixed(1)} J`}
                               </td>
                             </tr>
                           );
@@ -1356,6 +1531,26 @@ function CircuitTelemetry({ components, solverResults, currents, powers }) {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Summary Footer */}
+                <div className="flex items-center justify-between px-3 py-1.5 rounded-lg border text-[10px] font-mono mt-1"
+                  style={{ background: CLR.bg, borderColor: CLR.border }}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Status:</span>
+                    <span className="font-bold text-emerald-400">
+                      {isOvercurrent ? "⚠️ Short Circuit" : isClosedLoop ? "🟢 Closed Loop" : "🔴 Open Circuit"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Heat Generation Rate:</span>
+                    <span className="font-bold text-amber-300">{pLoads.toFixed(2)} J/s</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Active Load Count:</span>
+                    <span className="font-bold text-cyan-300">{activeLoadsCount}</span>
+                  </div>
+                </div>
+
               </div>
 
             </div>

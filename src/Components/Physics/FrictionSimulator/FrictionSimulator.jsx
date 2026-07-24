@@ -94,7 +94,7 @@ function LeftPanel({
         </div>
 
         {/* ── Surface presets ── */}
-        <div className="flex flex-col gap-1.5">
+        {/* <div className="flex flex-col gap-1.5">
           <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>Surface</p>
           {Object.entries(SURFACE_PRESETS).map(([key, p]) => (
             <button key={key}
@@ -107,7 +107,7 @@ function LeftPanel({
               <span>{p.icon} {p.label}</span>
             </button>
           ))}
-        </div>
+        </div> */}
 
         {/* ── Visualization ── */}
         <div className="flex flex-col gap-1.5">

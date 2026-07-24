@@ -478,7 +478,7 @@ export function drawForceReadout(ctx, W, H, forces, angleDeg, state) {
 
   const panelW = 210;
   const panelH = PAD * 2 + rows.length * ROW_H + 28; // 28 for header
-  const px     = 12;
+  const px     = W - panelW - 12;
   const py     = H - panelH - 12;
 
   ctx.save();
