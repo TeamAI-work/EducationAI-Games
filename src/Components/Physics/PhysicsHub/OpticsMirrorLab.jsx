@@ -8,6 +8,8 @@ import LabCanvas    from "./components/LabCanvas";
 import HubSection   from "./components/HubSection";
 import HubSliderRow from "./components/HubSliderRow";
 
+import FormulaOverlay from "../FormulaOverlay";
+
 function TelCard({ label, value, unit, accent }) {
   return (
     <div className="flex flex-col gap-1 rounded-lg px-4 py-3 border"
@@ -28,7 +30,7 @@ const COMPONENT_OPTIONS = [
 ];
 
 // ─── Left panel ───────────────────────────────────────────────────────────────
-function LeftPanel({ mode, setMode, OM, defect, setDefect, ED, component, setComponent }) {
+function LeftPanel({ mode, setMode, OM, defect, setDefect, ED, component, setComponent, showFormulas, setShowFormulas }) {
   return (
     <div className="w-48 shrink-0 flex flex-col border-r overflow-y-auto"
       style={{ background: CLR.panel, borderColor: CLR.border }}>
@@ -66,6 +68,22 @@ function LeftPanel({ mode, setMode, OM, defect, setDefect, ED, component, setCom
               {m.icon} {m.label}
             </button>
           ))}
+        </div>
+
+        {/* View toggle */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>View</p>
+          <button
+            onClick={() => setShowFormulas(!showFormulas)}
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-xs border transition-all"
+            style={{
+              borderColor: showFormulas ? CLR.ray + "55" : CLR.border,
+              background: showFormulas ? "rgba(0,229,255,0.07)" : "transparent",
+              color: showFormulas ? CLR.ray : CLR.muted,
+            }}>
+            <span>Formulas (∑)</span>
+            <span className="text-[9px] font-mono">{showFormulas ? "ON" : "OFF"}</span>
+          </button>
         </div>
 
         {/* Component selector (bench mode) */}
@@ -152,6 +170,7 @@ export default function OpticsMirrorLab({ active }) {
   const [n2,             setN2State]             = useState(1.50);
   const [incidenceAngle, setIncidenceAngleState] = useState(45);
   const [showProtractor, setShowProtractorState] = useState(true);
+  const [showFormulas,   setShowFormulas]   = useState(true);
 
   const {
     telemetry, handleMouseDown, handleMouseMove, handleMouseUp,
@@ -188,10 +207,17 @@ export default function OpticsMirrorLab({ active }) {
         mode={mode} setMode={setMode} OM={OM}
         defect={defect} setDefect={setDefect} ED={ED}
         component={component} setComponent={setComponent}
+        showFormulas={showFormulas} setShowFormulas={setShowFormulas}
       />
 
       {/* CENTER */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2">
+      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 relative">
+        <FormulaOverlay
+          type="optics"
+          isOpen={showFormulas}
+          onClose={() => setShowFormulas(false)}
+          data={{ mode, telemetry: { ...tel, mode, defect, corrDiopt } }}
+        />
         <LabCanvas canvasRef={canvasRef} canvasSize={canvasSize} onResize={setCanvasSize}
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
         />

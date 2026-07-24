@@ -102,21 +102,21 @@ const ORGANELLES = [
 
 const DATA = Object.fromEntries(ORGANELLES.map(o => [o.id, o]));
 
-const CX = 250, CY = 248, CELL_RX = 200, CELL_RY = 168;
+const CX = 250, CY = 248, CELL_RX = 250, CELL_RY = 250;
 
 const LABEL_CONFIGS = [
-  { id: "membrane",     lx: 440, ly: 135, tx: "right", ax: 395, ay: 165 },
-  { id: "cytoplasm",    lx: 58,  ly: 350, tx: "left",  ax: 135, ay: 308 },
-  { id: "nucleus",      lx: 58,  ly: 200, tx: "left",  ax: 186, ay: 232 },
-  { id: "nucleolus",    lx: 58,  ly: 235, tx: "left",  ax: 209, ay: 242 },
-  { id: "mitochondria", lx: 440, ly: 345, tx: "right", ax: 355, ay: 325 },
-  { id: "golgi",        lx: 440, ly: 170, tx: "right", ax: 348, ay: 182 },
+  { id: "membrane",     lx: 440, ly: 135, tx: "right", ax: 470, ay: 135 },
+  { id: "cytoplasm",    lx: 208,  ly: 150, tx: "left",  ax: 208, ay: 150 },
+  { id: "nucleus",      lx: 138,  ly: 200, tx: "right",  ax: 196, ay: 232 },
+  { id: "nucleolus",    lx: 168,  ly: 175, tx: "right",  ax: 269, ay: 242 },
+  { id: "mitochondria", lx: 340, ly: 345, tx: "right", ax: 375, ay: 350 },
+  { id: "golgi",        lx: 250, ly: 60, tx: "right", ax: 282, ay: 80 },
   { id: "er_rough",     lx: 440, ly: 295, tx: "right", ax: 358, ay: 282 },
-  { id: "er_smooth",    lx: 440, ly: 240, tx: "right", ax: 395, ay: 238 },
-  { id: "lysosome",     lx: 58,  ly: 390, tx: "left",  ax: 158, ay: 360 },
+  { id: "er_smooth",    lx: 390, ly: 170, tx: "left", ax: 395, ay: 238 },
+  { id: "lysosome",     lx: 108,  ly: 390, tx: "right",  ax: 158, ay: 360 },
   { id: "ribosome",     lx: 440, ly: 408, tx: "right", ax: 298, ay: 392 },
-  { id: "peroxisome",   lx: 58,  ly: 290, tx: "left",  ax: 138, ay: 310 },
-  { id: "centriole",    lx: 58,  ly: 140, tx: "left",  ax: 143, ay: 168 },
+  { id: "peroxisome",   lx: 88,  ly: 290, tx: "right",  ax: 138, ay: 310 },
+  { id: "centriole",    lx: 75,  ly: 80, tx: "left",  ax: 143, ay: 108 },
 ];
 
 export default function InteractiveAnimalCell() {
@@ -142,13 +142,13 @@ export default function InteractiveAnimalCell() {
       fontFamily: "'Inter','Segoe UI',sans-serif", overflow: "hidden",
     }}>
       <div style={{
-        display: "flex", flex: 1, minHeight: 0, gap: "16px",
-        padding: "16px", overflow: "hidden",
+        display: "flex", flex: 1, minHeight: 0, gap: "24px",
+        padding: "24px", overflow: "hidden",
       }}>
 
         {/* SVG Diagram */}
-        <div style={{ flex: "0 0 auto", width: "500px", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg viewBox="0 0 500 500" width="500" height="500"
+        <div style={{ flex: "0 0 auto", width: "560px", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg viewBox="0 0 500 500" width="560" height="560"
             style={{ display: "block", userSelect: "none", overflow: "visible" }}
             xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -209,19 +209,39 @@ export default function InteractiveAnimalCell() {
               {...orgProps("membrane")} />
 
             {/* Rough ER */}
-            <g {...orgProps("er_rough")}>
+            <g>
               {[0,13,26,39].map((dy, i) => (
                 <g key={i}>
-                  <path d={`M ${290-i*2},${264+dy} C ${312},${256+dy} ${342},${270+dy} ${360},${264+dy} C ${370},${267+dy} ${382},${258+dy} ${396},${264+dy}`}
+                  <path
+                    {...orgProps("er_rough")}
+                    d={`M ${290-i*2},${264+dy} C ${312},${256+dy} ${342},${270+dy} ${360},${264+dy} C ${370},${267+dy} ${382},${258+dy} ${396},${264+dy}`}
                     fill={`rgba(96,165,250,${0.08+i*0.04})`}
                     stroke={isHighlit("er_rough") ? "#60a5fa" : "#3b82f6"}
-                    strokeWidth={isHighlit("er_rough") ? 2.5 : 1.8}
-                    style={{ filter: isHighlit("er_rough") ? "drop-shadow(0 0 5px #60a5fa)" : "none", transition: "all 0.2s" }} />
+                    strokeWidth={isHighlit("er_rough") ? 12.6 : 10.6}
+                    style={{ filter: isHighlit("er_rough") ? "drop-shadow(0 0 5px #60a5fa)" : "none", transition: "all 0.2s" }}
+                  />
                   {[295,310,325,340,355,370,385].map((rx2, j) => (
-                    <circle key={j} cx={rx2} cy={264+dy-4} r="3.5"
+                    <circle
+                      key={j}
+                      cx={rx2}
+                      cy={264+dy-4}
+                      r="3.5"
                       fill={isHighlit("ribosome") ? "#facc15" : "#ca8a04"}
                       opacity={isHighlit("ribosome") ? 1 : 0.7}
-                      {...orgProps("ribosome")} />
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveId("ribosome");
+                      }}
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        setHoveredId("ribosome");
+                      }}
+                      onMouseLeave={(e) => {
+                        e.stopPropagation();
+                        setHoveredId(null);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    />
                   ))}
                 </g>
               ))}
@@ -230,9 +250,9 @@ export default function InteractiveAnimalCell() {
             {/* Smooth ER */}
             <g {...orgProps("er_smooth")}>
               {[
-                "M 356,198 C 376,183 402,193 416,208 C 402,220 376,214 356,198",
-                "M 350,218 C 372,203 401,213 418,228 C 401,242 370,236 350,218",
-                "M 348,238 C 370,224 399,233 417,248 C 399,262 368,256 348,238",
+                "M 372,198 C 392,183 418,193 432,208 C 418,220 392,214 372,198",
+                "M 366,218 C 388,203 417,213 434,228 C 417,242 386,236 366,218",
+                "M 364,238 C 386,224 415,233 433,248 C 415,262 384,256 364,238",
               ].map((d, i) => (
                 <path key={i} d={d}
                   fill={`rgba(129,140,248,${0.14+i*0.06})`}
@@ -245,7 +265,7 @@ export default function InteractiveAnimalCell() {
             {/* Golgi Apparatus */}
             <g {...orgProps("golgi")}>
               {[0,11,21,30].map((dy, i) => {
-                const w = 54 - i * 7, ox = 296 + i * 2, oy = 150 + i * 12;
+                const w = 54 - i * 7, ox = 280 + i * 2, oy = 80 + i * 10;
                 return (
                   <path key={i}
                     d={`M ${ox},${oy} Q ${ox+w/2},${oy-9} ${ox+w},${oy} Q ${ox+w+7},${oy+6} ${ox+w},${oy+9} Q ${ox+w/2},${oy} ${ox},${oy+9} Q ${ox-7},${oy+3} ${ox},${oy} Z`}
@@ -255,7 +275,7 @@ export default function InteractiveAnimalCell() {
                     style={{ filter: isHighlit("golgi") ? "drop-shadow(0 0 7px #4ade80)" : "none", transition: "all 0.2s" }} />
                 );
               })}
-              {[[294,150],[356,215]].map(([bx,by],i) => (
+              {[[278,80],[330,100]].map(([bx,by],i) => (
                 <circle key={i} cx={bx} cy={by} r="6"
                   fill="rgba(74,222,128,0.3)" stroke={isHighlit("golgi") ? "#4ade80" : "#16a34a"} strokeWidth="1.5" />
               ))}
@@ -263,9 +283,9 @@ export default function InteractiveAnimalCell() {
 
             {/* Mitochondria */}
             {[
-              { cx: 165, cy: 330, w: 48, h: 23, angle: 20 },
+              { cx: 165, cy: 430, w: 48, h: 23, angle: 20 },
               { cx: 400, cy: 362, w: 42, h: 20, angle: -15 },
-              { cx: 104, cy: 200, w: 40, h: 19, angle: -35 },
+              { cx: 74, cy: 150, w: 40, h: 19, angle: -35 },
             ].map((m, i) => (
               <g key={i} transform={`rotate(${m.angle},${m.cx},${m.cy})`} {...orgProps("mitochondria")}>
                 <ellipse cx={m.cx} cy={m.cy} rx={m.w} ry={m.h}
@@ -284,7 +304,7 @@ export default function InteractiveAnimalCell() {
             ))}
 
             {/* Lysosomes */}
-            {[[155,358,12],[338,402,10],[110,276,10]].map(([lx,ly,lr],i) => (
+            {[[155,358,12],[348,422,10],[110,276,10]].map(([lx,ly,lr],i) => (
               <g key={i} {...orgProps("lysosome")}>
                 <circle cx={lx} cy={ly} r={lr}
                   fill={isHighlit("lysosome") ? "rgba(192,132,252,0.55)" : "rgba(167,88,220,0.35)"}
@@ -309,23 +329,23 @@ export default function InteractiveAnimalCell() {
 
             {/* Centriole */}
             <g {...orgProps("centriole")}>
-              <rect x="130" y="158" width="28" height="11" rx="5.5"
+              <rect x="130" y="120" width="28" height="11" rx="5.5"
                 fill={isHighlit("centriole") ? "rgba(227,179,65,0.7)" : "rgba(217,119,6,0.45)"}
                 stroke={isHighlit("centriole") ? "#e3b341" : "#b45309"}
                 strokeWidth={isHighlit("centriole") ? 2 : 1.5}
-                transform="rotate(-20,144,163)"
+                transform="rotate(-20,144,125)"
                 style={{ filter: isHighlit("centriole") ? "drop-shadow(0 0 5px #e3b341)" : "none", transition: "all 0.2s" }} />
-              <rect x="138" y="165" width="28" height="11" rx="5.5"
+              <rect x="138" y="127" width="28" height="11" rx="5.5"
                 fill={isHighlit("centriole") ? "rgba(227,179,65,0.7)" : "rgba(217,119,6,0.45)"}
                 stroke={isHighlit("centriole") ? "#e3b341" : "#b45309"}
                 strokeWidth={isHighlit("centriole") ? 2 : 1.5}
-                transform="rotate(70,152,170)"
+                transform="rotate(70,152,132)"
                 style={{ filter: isHighlit("centriole") ? "drop-shadow(0 0 5px #e3b341)" : "none", transition: "all 0.2s" }} />
               {[-30,-10,10,30,50].map((deg,i) => {
                 const rad = (deg - 90) * Math.PI / 180;
                 return (
-                  <line key={i} x1={148} y1={170}
-                    x2={148+Math.cos(rad)*42} y2={170+Math.sin(rad)*42}
+                  <line key={i} x1={148} y1={132}
+                    x2={148+Math.cos(rad)*42} y2={132+Math.sin(rad)*42}
                     stroke={isHighlit("centriole") ? "rgba(227,179,65,0.55)" : "rgba(180,130,30,0.28)"}
                     strokeWidth="1.2" strokeDasharray="3 2" />
                 );
@@ -344,22 +364,22 @@ export default function InteractiveAnimalCell() {
 
             {/* Nucleus */}
             <g {...orgProps("nucleus")}>
-              <circle cx={CX} cy={CY} r="78" fill="url(#ng)"
+              <circle cx={CX} cy={CY} r="58" fill="url(#ng)"
                 fillOpacity={isHighlit("nucleus") ? 1 : 0.88}
                 stroke={isHighlit("nucleus") ? "#f97316" : "#ea580c"}
                 strokeWidth={isHighlit("nucleus") ? 3 : 2}
                 style={{ filter: isHighlit("nucleus") ? "drop-shadow(0 0 12px rgba(249,115,22,0.6))" : "none", transition: "all 0.2s" }} />
-              <circle cx={CX} cy={CY} r="72" fill="none" stroke="rgba(254,215,170,0.3)" strokeWidth="1.5" />
+              <circle cx={CX} cy={CY} r="52" fill="none" stroke="rgba(254,215,170,0.3)" strokeWidth="1.5" />
               {Array.from({length:10},(_,i) => {
                 const a = (i/10)*Math.PI*2;
-                return <circle key={i} cx={CX+Math.cos(a)*78} cy={CY+Math.sin(a)*78}
+                return <circle key={i} cx={CX+Math.cos(a)*58} cy={CY+Math.sin(a)*58}
                   r="3.5" fill="rgba(12,8,4,0.65)" stroke="rgba(249,115,22,0.7)" strokeWidth="1.2" />;
               })}
             </g>
 
             {/* Nucleolus */}
             <g {...orgProps("nucleolus")}>
-              <circle cx={CX+16} cy={CY-10} r="26" fill="url(#nlg)"
+              <circle cx={CX+16} cy={CY-10} r="16" fill="url(#nlg)"
                 fillOpacity={isHighlit("nucleolus") ? 0.95 : 0.82}
                 stroke={isHighlit("nucleolus") ? "#fbbf24" : "#d97706"}
                 strokeWidth={isHighlit("nucleolus") ? 2.5 : 1.5}
@@ -383,53 +403,55 @@ export default function InteractiveAnimalCell() {
 
           {/* Header card */}
           <div style={{
-            background: "rgba(15,23,42,0.85)",
-            border: `1px solid ${currentData.color}40`,
-            borderRadius: "14px", padding: "20px",
-            boxShadow: `0 0 22px ${currentData.color}18`,
+            background: "rgba(15,23,42,0.9)",
+            border: `1px solid ${currentData.color}35`,
+            borderRadius: "16px", padding: "18px 20px",
+            boxShadow: `0 8px 24px ${currentData.color}16`,
             transition: "all 0.25s ease",
+            boxSizing: "border-box",
+            height: 150,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
               <span style={{
                 width: "10px", height: "10px", borderRadius: "50%",
                 background: currentData.color, boxShadow: `0 0 8px ${currentData.color}`,
                 flexShrink: 0,
               }} />
-              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748b" }}>
+              <span style={{ fontSize: "10.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748b" }}>
                 {currentData.tagline}
               </span>
             </div>
-            <h2 style={{ fontSize: "22px", fontWeight: 700, color: "#f1f5f9", margin: "0 0 10px" }}>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#f1f5f9", margin: "0 0 8px" }}>
               {currentData.name}
             </h2>
-            <p style={{ fontSize: "13.5px", color: "#94a3b8", lineHeight: 1.65, margin: 0 }}>
+            <p style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>
               {currentData.description}
             </p>
           </div>
 
           {/* Fun fact card */}
           <div style={{
-            background: `linear-gradient(135deg, ${currentData.color}12, rgba(15,23,42,0.6))`,
-            border: `1px solid ${currentData.color}30`,
-            borderRadius: "12px", padding: "14px 18px",
+            background: `linear-gradient(135deg, ${currentData.color}14, rgba(15,23,42,0.72))`,
+            border: `1px solid ${currentData.color}28`,
+            borderRadius: "12px", padding: "14px 16px",
             transition: "all 0.25s ease",
           }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: currentData.color, marginBottom: "6px" }}>
+            <div style={{ fontSize: "10.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: currentData.color, marginBottom: "6px" }}>
               Did you know?
             </div>
-            <p style={{ fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontSize: "12px", color: "#e2e8f0", lineHeight: 1.55, margin: 0 }}>
               {currentData.fact}
             </p>
           </div>
 
           {/* Organelle selector grid */}
           <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", gap: "8px", minHeight: 0 }}>
-            <div style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#475569" }}>
+            <div style={{ fontSize: "10.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#64748b" }}>
               All Organelles
             </div>
             <div style={{
-              display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px",
-              overflowY: "auto", paddingRight: "4px",
+              display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "7px",
+              overflowY: "scroll", paddingRight: "8px", boxSizing: "border-box",
             }}>
               {ORGANELLES.map(o => {
                 const selected = activeId === o.id;
@@ -440,13 +462,18 @@ export default function InteractiveAnimalCell() {
                     onMouseLeave={() => setHoveredId(null)}
                     style={{
                       display: "flex", alignItems: "center", gap: "8px",
-                      padding: "7px 10px", borderRadius: "8px",
-                      border: `1px solid ${selected ? o.color+"60" : "rgba(51,65,85,0.5)"}`,
-                      background: selected ? `${o.color}18` : "rgba(15,23,42,0.5)",
-                      color: selected ? o.color : "#64748b",
-                      fontSize: "12px", fontWeight: selected ? 600 : 400,
+                      padding: "8px 10px", borderRadius: "10px",
+                      border: `1px solid ${selected ? o.color+"60" : "rgba(71,85,105,0.45)"}`,
+                      background: selected ? `${o.color}18` : "rgba(15,23,42,0.6)",
+                      color: selected ? o.color : "#cbd5e1",
+                      fontSize: "12px", fontWeight: selected ? 600 : 500,
                       cursor: "pointer", textAlign: "left",
-                      transition: "all 0.15s ease", outline: "none",
+                      transition: "none", outline: "none",
+                      boxShadow: selected ? `0 0 0 1px ${o.color}14` : "none",
+                      height: "42px",
+                      width: "100%",
+                      justifyContent: "flex-start",
+                      flexShrink: 0,
                     }}>
                     <span style={{
                       width: "8px", height: "8px", borderRadius: "50%",

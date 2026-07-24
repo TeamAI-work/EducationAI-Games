@@ -101,12 +101,19 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
       if (accel < 0) accel = 0;  // can't decelerate past zero with pure gravity sim
     }
 
-    s.a    = accel;
-    s.v   += accel * DT;
-    if (s.v < 0) s.v = 0;
-    if (s.v > s.maxSpeed) s.maxSpeed = s.v;
-    s.d   += s.v * DT;
-    s.t   += DT;
+    s.a = accel;
+
+    if (s.state === STATES.KINETIC && accel > 0) {
+      // ── Velocity Verlet integration for constant acceleration ─────────────
+      // Eliminates explicit Euler integration error and lag:
+      // d(t + dt) = d(t) + v(t)*dt + 0.5*a*dt²
+      // v(t + dt) = v(t) + a*dt
+      s.d += s.v * DT + 0.5 * accel * DT * DT;
+      s.v += accel * DT;
+      s.t += DT;
+
+      if (s.v > s.maxSpeed) s.maxSpeed = s.v;
+    }
 
     return {
       fGravity:      m * G,
@@ -137,40 +144,36 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     const sinA     = Math.sin(rad0);
 
     // Canvas-pixel margin reserved on every side.
-    // Larger PAD → smaller scene → less zoom. 110px gives comfortable breathing room.
-    const PAD_PX = 110;
+    const PAD_PX = 32;
 
-    // Key scene-space points
+    // Key scene-space points for current ramp length
     const tipX  =  rampLen * cosA;
     const tipY  = -rampLen * sinA;
     const baseX =  tipX;
     const baseY =  0;
 
-    // ── 2. First-pass scale (no vecPad yet) to estimate pixels-per-scene-unit ─
-    // This lets us convert "how many canvas-px do arrows need" → scene-units.
-    const rawSceneW    = baseX + 1;           // rough width without padding
-    const rawSceneH    = Math.abs(tipY) + 1;  // rough height without padding
-    const roughScaleX  = (W - PAD_PX * 2) / rawSceneW;
-    const roughScaleY  = (H - PAD_PX * 2) / rawSceneH;
-    const roughScale   = Math.min(roughScaleX, roughScaleY, 2.2); // cap at 2.2× for sanity
+    // ── 2. Stable reference bounds (set to maximum slider capacity 1.50) ─
+    // Using max capacity 1.50 guarantees that even when ramp length is maxed out, it stays 100% inside the canvas.
+    const MAX_RAMP_FRACTION = 1.50;
+    const refRampLen        = Math.min(W, H) * MAX_RAMP_FRACTION;
+    const refTipX           = refRampLen * cosA;
+    const refTipY           = -refRampLen * sinA;
+    const roughScale        = Math.min((W - PAD_PX * 2) / (refTipX + 50), (H - PAD_PX * 2) / (Math.abs(refTipY) + 50), 2.2);
+    const vecPad            = 60 / Math.max(0.5, roughScale);
 
-    // Arrow labels need ~80 canvas-px clearance; convert to scene-units
-    const arrowCanvasPx = 80;
-    const vecPad        = arrowCanvasPx / roughScale;
-
-    // ── 3. Final scene bounding box ───────────────────────────────────────────
-    const sceneLeft   = -vecPad;
-    const sceneRight  = Math.max(baseX, tipX) + vecPad;
-    const sceneTop    = tipY - vecPad;
-    const sceneBottom = vecPad * 0.4;
+    // ── 3. Stable scene bounding box for maximum ramp capacity ─────────────────
+    const sceneLeft   = Math.min(-vecPad, -BLOCK_SIZE - vecPad);
+    const sceneRight  = Math.max(refTipX, 40) + vecPad;
+    const sceneTop    = refTipY - BLOCK_SIZE - vecPad;
+    const sceneBottom = Math.max(vecPad * 0.4, 45);
 
     const sceneW = sceneRight - sceneLeft;
     const sceneH = sceneBottom - sceneTop;
 
-    // ── 4. Final scale — fills canvas minus PAD, capped at roughScale ceiling ─
+    // ── 4. Fixed scale — fits maximum ramp capacity cleanly inside canvas bounds ──
     const scaleX    = (W - PAD_PX * 2) / sceneW;
     const scaleY    = (H - PAD_PX * 2) / sceneH;
-    const autoScale = Math.min(scaleX, scaleY, 2.0); // cap at 2× so it never gets huge
+    const autoScale = Math.min(scaleX, scaleY, 2.0);
 
     // ── 5. Center the scaled scene in the canvas ──────────────────────────────
     const scaledW = sceneW * autoScale;
@@ -265,15 +268,44 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
     // Check if block reached the bottom
     if (s.d >= maxD) {
       s.d     = maxD;
-      s.v     = 0;
-      s.state = STATES.DONE;
+      const tRad    = (angleRef.current * Math.PI) / 180;
+      const m       = massRef.current;
+      const muK     = muKRef.current;
+      const fNormal = m * G * Math.cos(tRad);
+      const fPar    = m * G * Math.sin(tRad);
+      const fFric   = muK * fNormal;
+      const accel   = Math.max(0, (fPar - fFric) / m);
+
+      // Exact Kinematic final time and terminal velocity with friction
+      const exactTime = accel > 0 ? Math.sqrt((2 * maxD) / accel) : s.t;
+      const exactV = accel > 0 ? Math.sqrt(2 * accel * maxD) : 0;
+      const vFrictionless = Math.sqrt(2 * G * Math.sin(tRad) * maxD);
+
+      s.v        = exactV;
+      s.t        = exactTime;
+      s.maxSpeed = Math.max(s.maxSpeed, exactV);
+      s.state    = STATES.DONE;
+
+      const kineticEnergy = 0.5 * m * exactV * exactV;
+      const workByGravity = fPar * maxD;
+      const workByFric    = fFric * maxD;
+      const efficiency    = workByGravity > 0 ? Math.min(100, Math.max(0, (kineticEnergy / workByGravity) * 100)) : 0;
+
       drawFrame();
       setTelemetry(prev => ({
         ...prev,
-        state:    STATES.DONE,
-        speed:    0,
-        elapsed:  s.t,
-        maxSpeed: s.maxSpeed,
+        state:          STATES.DONE,
+        speed:          0,
+        maxSpeed:       exactV,
+        vTheory:        vFrictionless,
+        vActual:        exactV,
+        elapsed:        exactTime,
+        distance:       maxD,
+        kineticEnergy,
+        workByGravity,
+        workByFriction: workByFric,
+        frictionHeat:   workByFric,
+        efficiency,
         ...forces,
       }));
       // Resume idle loop for continued redraws (angle can still change)
@@ -318,19 +350,33 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
       const fPar    = m * G * Math.sin(tRad);
       const fSLim   = muS * fNormal;
       const fFric   = s.state === STATES.KINETIC ? muK * fNormal : Math.min(fPar, fSLim);
-      const fNet    = s.state === STATES.KINETIC ? fPar - fFric : 0;
+      const fNet    = s.state === STATES.KINETIC ? Math.max(0, fPar - fFric) : 0;
+      const accel   = m > 0 ? fNet / m : 0;
 
-      // d is in "ramp metres" (rampLen / 10 px per metre, so d in metres already)
-      const d             = s.d;
-      const kineticEnergy = 0.5 * m * s.v * s.v;
+      const d = s.d;
+
+      // Actual speed with friction (v_actual = sqrt(2 * a * d) or current integrated v)
+      const vActual = accel > 0 && d > 0 ? Math.sqrt(2 * accel * d) : s.v;
+
+      // Theoretical terminal speed without friction: v_frictionless = sqrt(2 * g * sin(theta) * d)
+      const vFrictionless = d > 0 ? Math.sqrt(2 * G * Math.sin(tRad) * d) : 0;
+
+      // Continuous Energy & Efficiency recalculations:
+      const kineticEnergy = 0.5 * m * vActual * vActual;
       const workByGravity = fPar * d;
       const workByFric    = fFric * d;
+      const efficiency    = workByGravity > 0 ? Math.min(100, Math.max(0, (kineticEnergy / workByGravity) * 100)) : 0;
+
+      const currentMax = Math.max(s.maxSpeed, vActual);
+      s.maxSpeed = currentMax;
 
       setTelemetry({
         state:          s.state,
-        speed:          s.v,
-        maxSpeed:       s.maxSpeed,
-        acceleration:   s.a,
+        speed:          vActual,
+        maxSpeed:       currentMax,
+        vTheory:        vFrictionless,
+        vActual:        vActual,
+        acceleration:   accel,
         elapsed:        s.t,
         distance:       d,
         fGravity:       m * G,
@@ -342,6 +388,7 @@ export function useFrictionSimulation({ canvasRef, canvasSize }) {
         workByGravity,
         workByFriction: workByFric,
         frictionHeat:   workByFric,
+        efficiency,
       });
     }, 100);
     return () => clearInterval(id);

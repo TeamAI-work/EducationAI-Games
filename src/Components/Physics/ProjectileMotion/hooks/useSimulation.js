@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { DEFAULT_SCALE, MIN_SCALE, WORLD_PADDING, DT } from "../constants/physicsConstants";
+import { DEFAULT_SCALE, MIN_SCALE, WORLD_PADDING, DT, CLR } from "../constants/physicsConstants";
 import {
   drawGrid, drawTrails, drawCurrentPath, drawApexFlag,
   drawLaunchMarker, drawImpactMarker, drawVectors, drawProjectile,
@@ -53,21 +53,21 @@ export function useSimulation({
   const displayScaleRef = useRef(DEFAULT_SCALE);
 
   // ── Mirror mutable control values into refs so RAF reads latest without stale closure ──
-  const gravRef  = useRef(gravity);
-  const airRef   = useRef(airResist);
-  const dragRef  = useRef(dragCoeff);
-  const windRef  = useRef(windSpeed);
-  const gridRef  = useRef(showGrid);
-  const vecRef   = useRef(showVectors);
-  const sizeRef  = useRef(canvasSize);
+  const gravRef   = useRef(gravity);
+  const airRef    = useRef(airResist);
+  const dragRef   = useRef(dragCoeff);
+  const windRef   = useRef(windSpeed);
+  const gridRef   = useRef(showGrid);
+  const vecRef    = useRef(showVectors);
+  const sizeRef   = useRef(canvasSize);
 
-  useEffect(() => { gravRef.current = gravity;    }, [gravity]);
-  useEffect(() => { airRef.current  = airResist;  }, [airResist]);
-  useEffect(() => { dragRef.current = dragCoeff;  }, [dragCoeff]);
-  useEffect(() => { windRef.current = windSpeed;  }, [windSpeed]);
-  useEffect(() => { gridRef.current = showGrid;   }, [showGrid]);
-  useEffect(() => { vecRef.current  = showVectors;}, [showVectors]);
-  useEffect(() => { sizeRef.current = canvasSize; }, [canvasSize]);
+  useEffect(() => { gravRef.current  = gravity;    }, [gravity]);
+  useEffect(() => { airRef.current   = airResist;  }, [airResist]);
+  useEffect(() => { dragRef.current  = dragCoeff;  }, [dragCoeff]);
+  useEffect(() => { windRef.current  = windSpeed;  }, [windSpeed]);
+  useEffect(() => { gridRef.current  = showGrid;   }, [showGrid]);
+  useEffect(() => { vecRef.current   = showVectors;}, [showVectors]);
+  useEffect(() => { sizeRef.current  = canvasSize; }, [canvasSize]);
 
   // ── React UI state (updated ~10 fps via interval, not inside RAF) ───────────
   const [isRunning,  setIsRunning]  = useState(false);
@@ -85,30 +85,36 @@ export function useSimulation({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const W   = canvas.width;
-    const H   = canvas.height;
+    const W   = canvas.width || 800;
+    const H   = canvas.height || 480;
 
     // ── Compute dynamic scale ─────────────────────────────────────────────────
     // Available drawing area (leave left/bottom margin for axes)
-    const drawW = W - 50; // subtract left origin offset + right padding
-    const drawH = H - 50; // subtract bottom origin offset + top padding
+    const drawW = Math.max(10, W - 50);
+    const drawH = Math.max(10, H - 50);
 
-    const { maxX, maxY } = worldBoundsRef.current;
-    // World extents including padding so trajectory never hugs the edge
-    const worldW = maxX + WORLD_PADDING;
-    const worldH = maxY + WORLD_PADDING;
+    const bounds = worldBoundsRef.current || {};
+    const maxX = isNaN(bounds.maxX) || bounds.maxX < 0 ? WORLD_PADDING : bounds.maxX;
+    const maxY = isNaN(bounds.maxY) || bounds.maxY < 0 ? WORLD_PADDING : bounds.maxY;
 
-    // Target scale: fit both axes, never go below MIN_SCALE
-    const targetScale = Math.max(
-      MIN_SCALE,
-      Math.min(DEFAULT_SCALE, drawW / worldW, drawH / worldH),
-    );
+    const worldW = Math.max(1, maxX + WORLD_PADDING);
+    const worldH = Math.max(1, maxY + WORLD_PADDING);
 
-    // Smooth lerp toward target (factor 0.08 = gentle zoom-out, snappier zoom-in)
-    const prev = displayScaleRef.current;
+    let rawScale = Math.min(DEFAULT_SCALE, drawW / worldW, drawH / worldH);
+    if (isNaN(rawScale) || !isFinite(rawScale) || rawScale <= 0) {
+      rawScale = DEFAULT_SCALE;
+    }
+    const targetScale = Math.max(MIN_SCALE, rawScale);
+
+    let prev = displayScaleRef.current;
+    if (isNaN(prev) || !isFinite(prev) || prev <= 0) {
+      prev = DEFAULT_SCALE;
+    }
+
     const lerpFactor = targetScale < prev ? 0.06 : 0.12;
-    displayScaleRef.current = prev + (targetScale - prev) * lerpFactor;
-    const scale = displayScaleRef.current;
+    const nextScale = prev + (targetScale - prev) * lerpFactor;
+    const scale = isNaN(nextScale) || !isFinite(nextScale) || nextScale <= 0 ? DEFAULT_SCALE : nextScale;
+    displayScaleRef.current = scale;
 
     // Origin is always bottom-left margin
     const originX = 40;
@@ -116,7 +122,7 @@ export function useSimulation({
 
     // ── Paint ─────────────────────────────────────────────────────────────────
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#0d1117";
+    ctx.fillStyle = CLR.bg;
     ctx.fillRect(0, 0, W, H);
 
     if (gridRef.current) drawGrid(ctx, W, H, originX, originY, scale);
@@ -128,14 +134,14 @@ export function useSimulation({
     drawCurrentPath(ctx, pathRef.current, originX, originY, scale);
     drawApexFlag(ctx, apexRef.current, originX, originY, scale);
 
-    if (launchPtRef.current) {
+    if (launchPtRef.current && isFinite(launchPtRef.current.x) && isFinite(launchPtRef.current.y)) {
       drawLaunchMarker(
         ctx,
         toScreenX(launchPtRef.current.x, originX, scale),
         toScreenY(launchPtRef.current.y, originY, scale),
       );
     }
-    if (impactRef.current) {
+    if (impactRef.current && isFinite(impactRef.current.x) && isFinite(impactRef.current.y)) {
       drawImpactMarker(
         ctx,
         toScreenX(impactRef.current.x, originX, scale),
@@ -147,8 +153,10 @@ export function useSimulation({
     if (s.running || s.paused) {
       const sx = toScreenX(s.x, originX, scale);
       const sy = toScreenY(s.y, originY, scale);
-      drawVectors(ctx, sx, sy, s.vx, s.vy, vecRef.current);
-      drawProjectile(ctx, sx, sy);
+      if (isFinite(sx) && isFinite(sy)) {
+        drawVectors(ctx, sx, sy, s.vx, s.vy, vecRef.current);
+        drawProjectile(ctx, sx, sy);
+      }
     }
 
     drawScaleBadge(ctx, W, scale, DEFAULT_SCALE);

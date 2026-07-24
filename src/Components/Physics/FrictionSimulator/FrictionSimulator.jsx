@@ -8,6 +8,8 @@ import FrictionCanvas  from "./components/FrictionCanvas";
 import TelemetryPanel  from "./components/TelemetryPanel";
 import ControlPanel    from "./components/ControlPanel";
 
+import FormulaOverlay from "../FormulaOverlay";
+
 // ─── Left nav panel ───────────────────────────────────────────────────────────
 function LeftPanel({
   simState, STATES,
@@ -15,6 +17,7 @@ function LeftPanel({
   onBack, embedded,
   showVectors, setShowVectors,
   showGrid, setShowGrid,
+  showFormulas, setShowFormulas,
   setMuS, setMuK,
 }) {
   const isRunning = simState === STATES.KINETIC || simState === STATES.STATIC;
@@ -110,8 +113,9 @@ function LeftPanel({
         <div className="flex flex-col gap-1.5">
           <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>View</p>
           {[
-            { label: "Vectors", val: showVectors, set: setShowVectors },
-            { label: "Grid",    val: showGrid,    set: setShowGrid    },
+            { label: "Formulas (∑)", val: showFormulas, set: setShowFormulas },
+            { label: "Vectors",       val: showVectors,  set: setShowVectors  },
+            { label: "Grid",          val: showGrid,     set: setShowGrid     },
           ].map(({ label, val, set }) => (
             <button key={label} onClick={() => set(!val)}
               className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-xs border"
@@ -169,6 +173,7 @@ export default function FrictionSimulator({ embedded = false }) {
   const [rampLength,  setRampLenState]= useState(0.75);
   const [showVectors, setShowVectors] = useState(true);
   const [showGrid,    setShowGrid]    = useState(true);
+  const [showFormulas, setShowFormulas] = useState(true);
 
   const {
     telemetry, STATES, handleRun, handlePause, handleReset,
@@ -196,11 +201,18 @@ export default function FrictionSimulator({ embedded = false }) {
         onBack={() => navigate(-1)} embedded={embedded}
         showVectors={showVectors} setShowVectors={handleShowVectors}
         showGrid={showGrid} setShowGrid={handleShowGrid}
+        showFormulas={showFormulas} setShowFormulas={setShowFormulas}
         setMuS={setMuS} setMuK={setMuK}
       />
 
       {/* CENTER */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2">
+      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 relative">
+        <FormulaOverlay
+          type="friction"
+          isOpen={showFormulas}
+          onClose={() => setShowFormulas(false)}
+          data={{ angle, mass, muS, muK, gravity: 9.81, telemetry }}
+        />
         <FrictionCanvas canvasRef={canvasRef} canvasSize={canvasSize} onResize={setCanvasSize} />
         <TelemetryPanel telemetry={telemetry} slipAngle={slipAngle} STATES={STATES} />
       </div>

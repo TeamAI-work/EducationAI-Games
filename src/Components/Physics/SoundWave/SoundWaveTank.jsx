@@ -11,12 +11,15 @@ import SoundCanvas       from "./components/SoundCanvas";
 import SoundTelemetry    from "./components/SoundTelemetry";
 import SoundControlPanel from "./components/SoundControlPanel";
 
+import FormulaOverlay from "../FormulaOverlay";
+
 // ─── Left nav panel ───────────────────────────────────────────────────────────
 function LeftPanel({
   running, onPlay, onPause, onReset,
   onBack, embedded,
   medium, setMedium,
   boundary, setBoundary,
+  showFormulas, setShowFormulas,
 }) {
   const isRigid = boundary === BOUNDARY.RIGID;
   return (
@@ -76,6 +79,22 @@ function LeftPanel({
             style={{ borderColor: CLR.border, color: CLR.muted, background: "transparent" }}>
             <RotateCcw size={12} /> Reset
           </motion.button>
+        </div>
+
+        {/* ── View ── */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>View</p>
+          <button
+            onClick={() => setShowFormulas(!showFormulas)}
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-xs border transition-all"
+            style={{
+              borderColor: showFormulas ? CLR.wave + "55" : CLR.border,
+              background: showFormulas ? "rgba(0,229,255,0.07)" : "transparent",
+              color: showFormulas ? CLR.wave : CLR.muted,
+            }}>
+            <span>Formulas (∑)</span>
+            <span className="text-[9px] font-mono">{showFormulas ? "ON" : "OFF"}</span>
+          </button>
         </div>
 
         {/* ── Medium selector ── */}
@@ -154,6 +173,7 @@ export default function SoundWaveTank({ embedded = false }) {
   const [temp,        setTempState]   = useState(DEFAULT_TEMP_C);
   const [medium,      setMediumState] = useState("gas");
   const [boundary,    setBoundaryState] = useState(BOUNDARY.ABSORB);
+  const [showFormulas, setShowFormulas] = useState(true);
 
   const {
     telemetry, handlePlay, handlePause, handleReset,
@@ -181,10 +201,17 @@ export default function SoundWaveTank({ embedded = false }) {
         onBack={() => navigate(-1)} embedded={embedded}
         medium={medium} setMedium={setMedium}
         boundary={boundary} setBoundary={setBoundary}
+        showFormulas={showFormulas} setShowFormulas={setShowFormulas}
       />
 
       {/* CENTER */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2">
+      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 relative">
+        <FormulaOverlay
+          type="sound"
+          isOpen={showFormulas}
+          onClose={() => setShowFormulas(true)}
+          data={{ freq, amp, phase, temp, medium, telemetry }}
+        />
         <SoundCanvas
           tankRef={tankRef} graphRef={graphRef}
           tankSize={canvasSize} graphSize={canvasSize}

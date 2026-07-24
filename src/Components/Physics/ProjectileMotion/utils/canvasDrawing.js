@@ -184,16 +184,16 @@ export function drawVectors(ctx, sx, sy, vx, vy, showVectors) {
 // ─── Projectile sphere ────────────────────────────────────────────────────────
 export function drawProjectile(ctx, sx, sy) {
   ctx.save();
-  ctx.shadowColor = CLR.accent;
-  ctx.shadowBlur  = 14;
+  ctx.shadowColor = "rgba(37, 99, 235, 0.5)";
+  ctx.shadowBlur  = 12;
   ctx.beginPath();
-  ctx.arc(sx, sy, 8, 0, Math.PI * 2);
-  ctx.strokeStyle = CLR.accent;
-  ctx.lineWidth   = 1.5;
+  ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = "#1d4ed8";
+  ctx.lineWidth   = 2;
   ctx.stroke();
-  const grad = ctx.createRadialGradient(sx - 2, sy - 2, 1, sx, sy, 8);
-  grad.addColorStop(0, "#a6d4ff");
-  grad.addColorStop(1, "#1a6fb0");
+  const grad = ctx.createRadialGradient(sx - 3, sy - 3, 1, sx, sy, 9);
+  grad.addColorStop(0, "#60a5fa");
+  grad.addColorStop(1, "#1e40af");
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.restore();

@@ -147,7 +147,7 @@ export default function ControlPanel({
             <FrictionSliderRow
               label="Static Friction (µs)" value={muS}
               min={0} max={1} step={0.01} unit=""
-              hint="Max before slipping"
+              hint={`Slip Angle θc = ${(Math.atan(muS) * 180 / Math.PI).toFixed(1)}°`}
               info={INFO.muS}
               onChange={(v) => { setMuS(v); if (muK > v) setMuK(v); }}
             />

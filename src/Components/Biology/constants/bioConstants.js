@@ -19,6 +19,14 @@ export const CLR = {
 // ─── Biology Hub Tabs ─────────────────────────────────────────────────────────
 export const BIO_TABS = [
   {
+    id:    "ncert_diagrams",
+    label: "NCERT Diagram Hub",
+    icon:  "🔬",
+    grade: "9th & 10th",
+    topic: "NCERT Diagram & Quiz Hub",
+    accent: "#39d353",
+  },
+  {
     id:    "cell",
     label: "Cell Sandbox",
     icon:  "🧫",
@@ -61,6 +69,7 @@ export const BIO_TABS = [
 ];
 
 export const TAB_ACCENT = {
+  ncert_diagrams: "#39d353",
   cell:     "#39d353",
   tissue:   "#58a6ff",
   life:     "#ff79c6",

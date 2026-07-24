@@ -101,28 +101,71 @@ export function drawGround(ctx, W, H) {
 export function drawRamp(ctx, origin, tip, base) {
   ctx.save();
 
-  // Filled triangle
+  // 1. Filled triangle with smooth dark gradient
   ctx.beginPath();
   ctx.moveTo(origin.x, origin.y);
   ctx.lineTo(tip.x,    tip.y);
   ctx.lineTo(base.x,   base.y);
   ctx.closePath();
-  ctx.fillStyle = CLR.ramp;
+  
+  const rampGrad = ctx.createLinearGradient(origin.x, tip.y, base.x, origin.y);
+  rampGrad.addColorStop(0, "rgba(30, 41, 59, 0.85)");
+  rampGrad.addColorStop(1, "rgba(15, 23, 42, 0.95)");
+  ctx.fillStyle = rampGrad;
   ctx.fill();
 
-  // Hypotenuse (slope surface)
+  // Subtle interior grid lines on ramp body
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+  ctx.lineWidth = 1;
+  const numGridLines = 6;
+  for (let i = 1; i < numGridLines; i++) {
+    const frac = i / numGridLines;
+    const px = origin.x + (tip.x - origin.x) * frac;
+    const py = origin.y + (tip.y - origin.y) * frac;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, origin.y);
+    ctx.stroke();
+  }
+
+  // 2. Glowing Hypotenuse (Slope Surface)
+  ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
+  ctx.shadowBlur = 8;
+  const slopeGrad = ctx.createLinearGradient(origin.x, origin.y, tip.x, tip.y);
+  slopeGrad.addColorStop(0, "#38bdf8");
+  slopeGrad.addColorStop(1, "#818cf8");
+
   ctx.beginPath();
   ctx.moveTo(origin.x, origin.y);
   ctx.lineTo(tip.x,    tip.y);
-  ctx.strokeStyle = CLR.rampEdge;
-  ctx.lineWidth   = 2.5;
+  ctx.strokeStyle = slopeGrad;
+  ctx.lineWidth   = 3;
   ctx.stroke();
 
-  // Vertical leg
+  // Tactile surface friction ticks along hypotenuse
+  const dx = tip.x - origin.x;
+  const dy = tip.y - origin.y;
+  const dist = Math.hypot(dx, dy);
+  const cosA = dx / dist;
+  const sinA = dy / dist;
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 0;
+  for (let d = 15; d < dist - 10; d += 25) {
+    const sx = origin.x + d * cosA;
+    const sy = origin.y + d * sinA;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx - 4 * sinA, sy + 4 * cosA);
+    ctx.stroke();
+  }
+
+  // 3. Vertical & Base edges
   ctx.beginPath();
   ctx.moveTo(tip.x,  tip.y);
   ctx.lineTo(base.x, base.y);
-  ctx.strokeStyle = CLR.rampEdge;
+  ctx.lineTo(origin.x, origin.y);
+  ctx.strokeStyle = "rgba(71, 85, 105, 0.8)";
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
@@ -130,27 +173,50 @@ export function drawRamp(ctx, origin, tip, base) {
 }
 
 // ─── Angle arc label ─────────────────────────────────────────────────────────
-// scale: the autoScale transform currently applied — dividing by it makes
-// font sizes appear at a fixed canvas-pixel size regardless of zoom.
 export function drawAngleArc(ctx, origin, rad, angleDeg, scale = 1) {
   if (angleDeg < 2) return;
-  const arcR = 36;
+  const arcR = 38;
   ctx.save();
-  ctx.strokeStyle = CLR.accent;
-  ctx.lineWidth   = 1.2 / scale;
-  // Arc from 0 (rightward) sweeping upward by rad
+  
+  // Filled arc wedge
+  ctx.beginPath();
+  ctx.moveTo(origin.x, origin.y);
+  ctx.arc(origin.x, origin.y, arcR, -rad, 0, false);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+  ctx.fill();
+
+  // Arc stroke
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth   = 1.5 / scale;
   ctx.beginPath();
   ctx.arc(origin.x, origin.y, arcR, -rad, 0, false);
   ctx.stroke();
 
-  // Label — font size stays constant in canvas-space (~13 px)
+  // Angle Badge Pill
   const midAngle = -rad / 2;
-  const lx = origin.x + (arcR + 14) * Math.cos(midAngle);
-  const ly = origin.y + (arcR + 14) * Math.sin(midAngle);
-  ctx.fillStyle = CLR.accent;
-  ctx.font      = `bold ${Math.round(13 / scale)}px Inter, sans-serif`;
+  const lx = origin.x + (arcR + 18) * Math.cos(midAngle);
+  const ly = origin.y + (arcR + 18) * Math.sin(midAngle);
+
+  const fontSize = Math.round(11 / scale);
+  ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+  const text = `${angleDeg}°`;
+  const textW = ctx.measureText(text).width;
+  const px = textW + 8 / scale;
+  const py = fontSize + 6 / scale;
+
+  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 1 / scale;
+  ctx.beginPath();
+  ctx.roundRect(lx - px / 2, ly - py / 2, px, py, 4 / scale);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#38bdf8";
   ctx.textAlign = "center";
-  ctx.fillText(`${angleDeg}°`, lx, ly);
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, lx, ly);
   ctx.restore();
 }
 
@@ -158,43 +224,56 @@ export function drawAngleArc(ctx, origin, rad, angleDeg, scale = 1) {
 export function drawBlock(ctx, cx, cy, rad, isMoving) {
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(-rad);   // rotate so block face is parallel to slope
+  ctx.rotate(-rad);   // rotate parallel to slope
 
   const half = BLOCK_SIZE / 2;
 
-  // Shadow / glow
-  ctx.shadowColor = isMoving ? CLR.block : "rgba(88,166,255,0.3)";
-  ctx.shadowBlur  = isMoving ? 14 : 6;
+  // Shadow / glow under block
+  ctx.shadowColor = isMoving ? "rgba(52, 211, 153, 0.6)" : "rgba(56, 189, 248, 0.4)";
+  ctx.shadowBlur  = isMoving ? 16 : 8;
 
-  // Fill
+  // Rich 3D gradient body
   const grad = ctx.createLinearGradient(-half, -half, half, half);
-  grad.addColorStop(0, isMoving ? "#79b8ff" : "#58a6ff");
-  grad.addColorStop(1, isMoving ? "#1a6fb0" : "#0d4080");
+  if (isMoving) {
+    grad.addColorStop(0, "#34d399");
+    grad.addColorStop(1, "#059669");
+  } else {
+    grad.addColorStop(0, "#60a5fa");
+    grad.addColorStop(1, "#1d4ed8");
+  }
+
   ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.roundRect(-half, -half, BLOCK_SIZE, BLOCK_SIZE, 4);
+  ctx.roundRect(-half, -half, BLOCK_SIZE, BLOCK_SIZE, 6);
   ctx.fill();
 
-  // Border
-  ctx.strokeStyle = CLR.blockEdge;
+  // Top highlight bevel line
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
   ctx.lineWidth   = 1.5;
   ctx.shadowBlur  = 0;
+  ctx.beginPath();
+  ctx.moveTo(-half + 4, -half + 2);
+  ctx.lineTo(half - 4, -half + 2);
   ctx.stroke();
 
-  // Centre dot
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  // Border outline
+  ctx.strokeStyle = isMoving ? "#a7f3d0" : "#93c5fd";
+  ctx.lineWidth   = 1.5;
   ctx.beginPath();
-  ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+  ctx.roundRect(-half, -half, BLOCK_SIZE, BLOCK_SIZE, 6);
+  ctx.stroke();
+
+  // Center crosshair & dot
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(0, 0, 3, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
 }
 
-// ─── Arrow helper (scene-space) ───────────────────────────────────────────────
-// scale: the autoScale currently applied to the canvas context.
-// Dividing sizes by scale keeps arrow heads and labels at consistent
-// canvas-pixel size regardless of zoom level.
-function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "", scale = 1) {
+// ─── Arrow helper with pill badges ───────────────────────────────────────────
+function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2.2, label = "", scale = 1) {
   const headLen = 10 / scale;
   const angle   = Math.atan2(ty - fy, tx - fx);
   ctx.save();
@@ -202,14 +281,16 @@ function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "", scale 
   ctx.fillStyle   = color;
   ctx.lineWidth   = lineWidth / scale;
   ctx.shadowColor = color;
-  ctx.shadowBlur  = 6 / scale;
+  ctx.shadowBlur  = 8 / scale;
   ctx.lineCap     = "round";
 
+  // Shaft
   ctx.beginPath();
   ctx.moveTo(fx, fy);
   ctx.lineTo(tx, ty);
   ctx.stroke();
 
+  // Head
   ctx.beginPath();
   ctx.moveTo(tx, ty);
   ctx.lineTo(tx - headLen * Math.cos(angle - Math.PI / 6), ty - headLen * Math.sin(angle - Math.PI / 6));
@@ -217,15 +298,29 @@ function drawArrow(ctx, fx, fy, tx, ty, color, lineWidth = 2, label = "", scale 
   ctx.closePath();
   ctx.fill();
 
+  // Label Pill Badge
   if (label) {
-    ctx.shadowBlur  = 0;
-    // Always render at ~12 canvas-pixels — readable at any zoom
-    const fontSize  = Math.round(12 / scale);
-    ctx.font        = `bold ${fontSize}px Inter, sans-serif`;
-    ctx.textAlign   = "center";
-    const offset    = 16 / scale;
+    ctx.shadowBlur = 0;
+    const fontSize = Math.max(12, Math.round(11 / scale));
+    ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+    const textW = ctx.measureText(label).width;
+    const offset = 18 / scale;
     const lx = tx + offset * Math.cos(angle);
     const ly = ty + offset * Math.sin(angle);
+    const px = textW + 8 / scale;
+    const py = fontSize + 6 / scale;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, 1 / scale);
+    ctx.beginPath();
+    ctx.roundRect(lx - px / 2, ly - py / 2, px, py, 4 / scale);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.fillText(label, lx, ly);
   }
 

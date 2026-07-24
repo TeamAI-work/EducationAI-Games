@@ -11,6 +11,7 @@ import HubSection from "./HubSection";
 import HubSliderRow from "./HubSliderRow";
 import { gridToPixel, drawGridNodes, drawComponent, drawVoltmeter, parseNode } from "../utils/circuitDrawing";
 import { solveCircuit } from "../hooks/useCircuitSolver";
+import FormulaOverlay from "../../FormulaOverlay";
 
 // Grid dimensions are now managed dynamically inside the component state
 // const GRID_W = 9;
@@ -47,6 +48,7 @@ export default function CircuitBuilder({ active }) {
   const [voltmeterProbes, setVoltmeterProbes] = useState({ red: null, black: null });
   const [hoveredNode, setHoveredNode] = useState(null);
   const [hoveredLink, setHoveredLink] = useState(null);
+  const [showFormulas, setShowFormulas] = useState(true);
 
   // Click & Drag states for drawing wires
   const [dragStartNode, setDragStartNode] = useState(null);
@@ -753,25 +755,35 @@ export default function CircuitBuilder({ active }) {
               <span>Clear Board</span>
             </button>
           </div>
+
+          {/* View toggle */}
+          <div className="flex flex-col gap-1.5 mt-2">
+            <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>View</p>
+            <button
+              onClick={() => setShowFormulas(!showFormulas)}
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-xs border transition-all"
+              style={{
+                borderColor: showFormulas ? "rgba(57,211,83,0.5)" : CLR.border,
+                background: showFormulas ? "rgba(57,211,83,0.07)" : "transparent",
+                color: showFormulas ? CLR.neon : CLR.muted,
+              }}>
+              <span>Formulas (∑)</span>
+              <span className="text-[9px] font-mono">{showFormulas ? "ON" : "OFF"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── CENTER PANEL: CANVAS & ALERTS ───────────────────────────────────── */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-semibold" style={{ color: CLR.muted }}>
-            {selectedTool ? (
-              selectedTool === "voltmeter" ? (
-                <span style={{ color: CLR.amber }}>Voltmeter Mode: Click grid nodes to connect Red (+) and Black (-) probes</span>
-              ) : selectedTool === "eraser" ? (
-                <span style={{ color: CLR.warn }}>Eraser Mode: Click placed components to delete them</span>
-              ) : (
-                <span>Placing: Click links between nodes to place component</span>
-              )
-            ) : (
-              <span>Interaction Mode: Click switches to toggle them, components to inspect</span>
-            )}
-          </span>
+      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 relative">
+        <FormulaOverlay
+          type="power"
+          isOpen={showFormulas}
+          onClose={() => setShowFormulas(false)}
+          data={{ solverResults, components }}
+        />
+        <div className="flex items-center justify-end px-1">
+          
 
           {/* Presets */}
           <div className="flex items-center gap-1.5">

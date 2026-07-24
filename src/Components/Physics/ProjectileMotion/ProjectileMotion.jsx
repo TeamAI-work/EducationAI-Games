@@ -8,6 +8,8 @@ import CanvasViewport from "./components/CanvasViewport";
 import TelemetryBar   from "./components/TelemetryBar";
 import ControlsSidebar from "./components/ControlsSidebar";
 
+import FormulaOverlay from "../FormulaOverlay";
+
 // ─── Left nav panel ───────────────────────────────────────────────────────────
 function LeftPanel({
   isRunning, isPaused, status,
@@ -16,6 +18,7 @@ function LeftPanel({
   showVectors, setShowVectors,
   showGrid, setShowGrid,
   retainTrails, setRetainTrails,
+  showFormulas, setShowFormulas,
   trailCount,
   gravityKey, setGravityKey,
 }) {
@@ -80,24 +83,6 @@ function LeftPanel({
           </motion.button>
         </div>
 
-        {/* ── Gravity presets ── */}
-        {/* <div className="flex flex-col gap-1.5">
-          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>Gravity</p>
-          {Object.entries(GRAVITY_PRESETS).filter(([k]) => k !== "custom").map(([key, preset]) => (
-            <button key={key}
-              onClick={() => setGravityKey(key)}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-xs border transition-all"
-              style={{
-                borderColor: gravityKey === key ? CLR.accent : CLR.border,
-                background: gravityKey === key ? "rgba(88,166,255,0.1)" : "transparent",
-                color: gravityKey === key ? CLR.accent : CLR.muted,
-              }}>
-              <span>{preset.icon} {preset.label}</span>
-              <span className="font-mono text-[9px]">{preset.value}</span>
-            </button>
-          ))}
-        </div> */}
-
          <div
           className="rounded-lg border p-3 flex flex-col gap-2"
           style={{ borderColor: CLR.border }}
@@ -133,9 +118,10 @@ function LeftPanel({
         <div className="flex flex-col gap-1.5">
           <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: CLR.muted }}>View</p>
           {[
-            { label: "Vectors",  val: showVectors,   set: setShowVectors   },
-            { label: "Grid",     val: showGrid,       set: setShowGrid       },
-            { label: "Trails",   val: retainTrails,  set: setRetainTrails  },
+            { label: "Formulas (∑)", val: showFormulas,  set: setShowFormulas },
+            { label: "Vectors",       val: showVectors,   set: setShowVectors  },
+            { label: "Grid",          val: showGrid,      set: setShowGrid     },
+            { label: "Trails",        val: retainTrails,  set: setRetainTrails },
           ].map(({ label, val, set }) => (
             <button key={label}
               onClick={() => set(!val)}
@@ -170,7 +156,7 @@ function LeftPanel({
   );
 }
 
-export default function ProjectileMotion({ embedded = false }) {
+export default function ProjectileMotion({ embedded = false, theme = true }) {
   const navigate  = useNavigate();
   const canvasRef = useRef(null);
 
@@ -187,6 +173,7 @@ export default function ProjectileMotion({ embedded = false }) {
   const [showVectors,   setShowVectors]   = useState(true);
   const [showGrid,      setShowGrid]      = useState(true);
   const [retainTrails,  setRetainTrails]  = useState(true);
+  const [showFormulas,  setShowFormulas]  = useState(true);
 
   const gravity = gravityKey === "custom" ? customGrav : GRAVITY_PRESETS[gravityKey].value;
 
@@ -194,7 +181,7 @@ export default function ProjectileMotion({ embedded = false }) {
     useSimulation({ canvasRef, canvasSize, angle, velocity, height, mass, gravity, airResist, dragCoeff, windSpeed, retainTrails, showGrid, showVectors });
 
   return (
-    <div className="flex h-full overflow-hidden" style={{ background: "#0d1117", fontFamily: "Inter, sans-serif" }}>
+    <div className="flex h-full overflow-hidden" style={{ background: CLR.bg, fontFamily: "Inter, sans-serif" }}>
 
       {/* LEFT — nav + actions */}
       <LeftPanel
@@ -204,12 +191,19 @@ export default function ProjectileMotion({ embedded = false }) {
         showVectors={showVectors} setShowVectors={setShowVectors}
         showGrid={showGrid} setShowGrid={setShowGrid}
         retainTrails={retainTrails} setRetainTrails={setRetainTrails}
+        showFormulas={showFormulas} setShowFormulas={setShowFormulas}
         trailCount={trailCount ?? 0}
         gravityKey={gravityKey} setGravityKey={setGravityKey}
       />
 
       {/* CENTER — canvas + telemetry */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2">
+      <div className="flex flex-col flex-1 min-w-0 p-3 gap-2 relative">
+        <FormulaOverlay
+          type="motion"
+          isOpen={showFormulas}
+          onClose={() => setShowFormulas(false)}
+          data={{ velocity, angle, height, gravity, telemetry }}
+        />
         <CanvasViewport
           canvasRef={canvasRef} canvasSize={canvasSize}
           onResize={setCanvasSize} idleHint={telemetry.status === "idle"}

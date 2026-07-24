@@ -11,16 +11,16 @@ import {
 
 // ─── Layout helpers (computed once per resize) ────────────────────────────────
 function getLayout(W, H) {
-  const tankTop   = H * 0.04;
-  const tankH     = H * 0.52;
+  const tankTop   = Math.max(54, H * 0.14);
+  const tankH     = Math.max(150, H * 0.75 - tankTop);
   const tankLeft  = W * 0.06;
   const tankW     = W * 0.88;
   const wallX     = tankLeft + tankW - 14;
   const pistonX   = tankLeft;
-  const gTop      = tankTop + tankH + H * 0.04;
+  const gTop      = tankTop + tankH + 16;
   const gLeft     = tankLeft;
   const gW        = tankW;
-  const gH        = H - gTop - H * 0.03;
+  const gH        = Math.max(70, H - gTop - 12);
   const midY      = tankTop + tankH / 2;
   return { tankTop, tankH, tankLeft, tankW, wallX, pistonX, gTop, gLeft, gW, gH, midY };
 }
@@ -202,7 +202,7 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
       mission === MISSION.RESONANCE ? targetArrRef.current : null,
       mission === MISSION.CANCEL    ? noiseArrRef.current  : null,
     );
-    drawGraphLabels(gctx, 0, 0, gW, gH, wavelength, actualV);
+    drawGraphLabels(gctx, 0, 0, gW, gH, wavelength, actualV, f);
   }, [tankCanvasRef, graphCanvasRef, buildNoise]);
 
   // ─── RAF loop ─────────────────────────────────────────────────────────────
@@ -243,10 +243,14 @@ export function useSoundSimulation({ tankCanvasRef, graphCanvasRef, canvasSize }
       const tempC  = tempRef.current;
       const medKey = mediumRef.current;
       const v      = computeSpeedOfSound(medKey, tempC);
+      const wl = v / f;
+      const totalSpatialSpanMeters = Math.max(1, f * 1.5) * wl;
       setTelemetry({
         running:      runningRef.current,
-        wavelength:   v / f,
+        wavelength:   wl,
         v,
+        freq:         f,
+        totalSpatialSpanMeters,
         tempC,
         mission:      missionRef.current,
         matchPct:     Math.round(matchRef.current.score * 100),

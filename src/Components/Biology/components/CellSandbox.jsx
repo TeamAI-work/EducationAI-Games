@@ -8,6 +8,7 @@ import { CLR } from "../constants/bioConstants";
 import { CELL_MODES, CELL_TYPES, DIVISION_TYPES, ASEXUAL_TYPES, ORGANELLES, MITOSIS_PHASES, MEIOSIS_PHASES } from "../constants/cellConstants";
 import { useCellSimulation } from "../hooks/useCellSimulation";
 import InteractiveAnimalCell from "../InteractiveAnimalCell";
+import InteractivePlantCell from "../InteractivePlantCell";
 
 // ─── Canvas wrapper ────────────────────────────────────────────────────────────
 
@@ -367,12 +368,12 @@ export default function CellSandbox({ active }) {
       </motion.div>
 
       {/* ── CENTER AREA ───────────────────────────────────────────────────────── */}
-      {mode === CM.MICROSCOPE && cellType === CT.ANIMAL ? (
-        <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
-          <InteractiveAnimalCell />
+      {mode === CM.MICROSCOPE ? (
+        <div className="flex-1 flex items-center justify-center p-5 overflow-y-auto">
+          {cellType === CT.ANIMAL ? <InteractiveAnimalCell /> : <InteractivePlantCell />}
         </div>
       ) : (
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden p-3 gap-2">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden p-4 gap-3">
 
           {/* Canvas + delete overlays wrapper */}
         <div className="flex-1 min-h-0 relative" ref={canvasContainerCallback}>
@@ -541,13 +542,12 @@ export default function CellSandbox({ active }) {
       )}
 
       {/* ── RIGHT PANEL ───────────────────────────────────────────────────────── */}
-      {!(mode === CM.MICROSCOPE && cellType === CT.ANIMAL) && (
+      {(mode !== CM.MICROSCOPE) && (
         <div className="w-64 shrink-0 border-l flex flex-col overflow-hidden"
           style={{ borderColor: CLR.border, background: CLR.panel }}>
 
         <AnimatePresence mode="wait">
 
-          {/* MICROSCOPE RIGHT: organelle legend */}
           {mode === CM.MICROSCOPE && (
             <motion.div key="micro-right"
               initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
@@ -580,7 +580,6 @@ export default function CellSandbox({ active }) {
                           return;
                         }
                         setSelectedOrganId(organ.id);
-                        // Compute canonical target position for the ring
                         const W = canvasSize.w, H = canvasSize.h;
                         setSelectedMicroscopeTarget(getCanonicalOrganelleTarget(organ.id, cellType, CT, W, H));
                       }}

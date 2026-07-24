@@ -20,7 +20,9 @@ function TelCard({ label, value, unit, accent, wide }) {
 }
 
 export default function SoundTelemetry({ telemetry, sonarGuess, setSonarGuess, onSonarSubmit }) {
-  const { wavelength, v, mission, matchPct, matchWon, cancelRms, cancelWon, sonarTof } = telemetry;
+  const { wavelength, v, freq = 3.6, totalSpatialSpanMeters, mission, matchPct, matchWon, cancelRms, cancelWon, sonarTof } = telemetry;
+
+  const spatialSpan = totalSpatialSpanMeters !== undefined ? totalSpatialSpanMeters : (Math.max(1, freq * 1.5) * wavelength);
 
   // ── Mission status string ─────────────────────────────────────────────────
   let statusLabel = "Analysing medium...";
@@ -37,7 +39,7 @@ export default function SoundTelemetry({ telemetry, sonarGuess, setSonarGuess, o
     statusLabel = sonarTof > 0 ? `TOF captured: ${sonarTof.toFixed(3)} s` : "Fire a pulse to measure";
     statusColor = CLR.sonar;
   } else {
-    statusLabel = "Sandbox — No mission";
+    statusLabel = "Sandbox — Active";
     statusColor = CLR.muted;
   }
 
@@ -46,21 +48,22 @@ export default function SoundTelemetry({ telemetry, sonarGuess, setSonarGuess, o
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[10px] uppercase tracking-widest font-semibold px-0.5" style={{ color: CLR.muted }}>
-        Telemetry
+        Telemetry &amp; Spatial Dynamics
       </p>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {/* Always-visible cards */}
-        <TelCard label="Wavelength (λ)" value={wavelength.toFixed(2)} unit="m"    accent={CLR.wave} />
-        <TelCard label="Speed (v)"      value={v}                      unit="m/s"  accent={CLR.accent} />
-        <TelCard label="Status"         value={statusLabel}            accent={statusColor} wide />
+        <TelCard label="Wavelength (λ)"          value={wavelength.toFixed(2)}  unit="m"    accent={CLR.wave} />
+        <TelCard label="Speed (v)"               value={v.toFixed(0)}           unit="m/s"  accent={CLR.accent} />
+        <TelCard label="Display Freq (f)"        value={freq.toFixed(1)}        unit="Hz"   accent={CLR.target} />
+        <TelCard label="Canvas Spatial Width (D)" value={spatialSpan.toFixed(1)} unit="m"    accent="#38bdf8" />
 
         {/* Mission-specific extras */}
         {mission === MISSION.RESONANCE && (
-          <TelCard label="Match" value={`${matchPct}%`} unit="" accent={matchPct > 90 ? CLR.wave : CLR.target} />
+          <TelCard label="Match" value={`${matchPct}%`} unit="" accent={matchPct > 90 ? CLR.wave : CLR.target} wide />
         )}
         {mission === MISSION.CANCEL && (
-          <TelCard label="RMS Disp." value={(cancelRms).toFixed(3)} unit="" accent={cancelRms < 0.1 ? CLR.wave : CLR.noise} />
+          <TelCard label="RMS Disp." value={(cancelRms).toFixed(3)} unit="" accent={cancelRms < 0.1 ? CLR.wave : CLR.noise} wide />
         )}
         {mission === MISSION.SONAR && (
           <>

@@ -24,8 +24,11 @@ dist-ssr
 *.sw?
 
 Backend/__pycache__/
+__pycache__/
+*.egg-info/
 Backend/venv/
 Backend/.venv/
+~$*
 
 # Environment variables
 .env

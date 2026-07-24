@@ -1,24 +1,30 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, BarChart2 } from "lucide-react";
+import { ChevronDown, ChevronUp, BarChart2, Activity, Zap, Flame, Info } from "lucide-react";
 import { CLR } from "../constants/frictionConstants";
 
-// ─── Single metric card ───────────────────────────────────────────────────────
-function TelCard({ label, value, unit, accent, wide }) {
+// ─── Single metric card component ─────────────────────────────────────────────
+function MetricItem({ label, value, unit, accent, highlight, subtitle }) {
   return (
-    <motion.div
-      layout
-      className={`flex flex-col gap-0.5 rounded-lg px-3 py-2.5 border ${wide ? "col-span-2" : ""}`}
-      style={{ background: CLR.bg, borderColor: CLR.border }}
+    <div
+      className={`flex flex-col gap-0.5 rounded-lg p-2.5 border transition-all ${
+        highlight ? "ring-1 ring-cyan-500/40 bg-cyan-950/20" : ""
+      }`}
+      style={{ background: CLR.bg, borderColor: highlight ? "rgba(56,189,248,0.4)" : CLR.border }}
     >
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[9px] uppercase tracking-widest font-bold leading-none"
+          style={{ color: CLR.muted }}
+        >
+          {label}
+        </span>
+        {subtitle && (
+          <span className="text-[8px] font-mono text-cyan-400 font-semibold">{subtitle}</span>
+        )}
+      </div>
       <span
-        className="text-[10px] uppercase tracking-widest font-semibold leading-none"
-        style={{ color: CLR.muted }}
-      >
-        {label}
-      </span>
-      <span
-        className="text-base font-mono font-bold tabular-nums leading-tight mt-0.5"
+        className="text-base font-mono font-bold tabular-nums leading-tight mt-1"
         style={{ color: accent || CLR.text }}
       >
         {value}
@@ -28,7 +34,7 @@ function TelCard({ label, value, unit, accent, wide }) {
           </span>
         )}
       </span>
-    </motion.div>
+    </div>
   );
 }
 
@@ -54,73 +60,62 @@ function CompactMetric({ label, value, unit, accent }) {
   );
 }
 
-// ─── Group header ─────────────────────────────────────────────────────────────
-function Group({ title }) {
-  return (
-    <p
-      className="text-[10px] uppercase tracking-widest font-semibold px-0.5 col-span-full border-b pb-1 mb-1"
-      style={{ color: CLR.muted, borderColor: CLR.border }}
-    >
-      {title}
-    </p>
-  );
-}
-
 /**
  * TelemetryPanel
  *
- * Props:
- *   telemetry  – from useFrictionSimulation
- *   slipAngle  – atan(µs) in degrees  (derived in orchestrator)
- *   STATES     – state machine constants
+ * 3 Primary Scannable Cards:
+ *   1. Motion & Kinematics (Acceleration, Final/Max Speed, Elapsed Time, Distance)
+ *   2. Force Dynamics (Net Force, Active Friction, optional Static Weight/Normal)
+ *   3. Energy & Analysis (Kinetic Energy, Friction Heat Loss, Ideal Speed, Efficiency)
  */
 export default function TelemetryPanel({ telemetry, slipAngle, STATES }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showStaticForces, setShowStaticForces] = useState(false);
 
   const {
     state, speed, maxSpeed, acceleration, elapsed, distance,
     fGravity, fNormal, fFriction, fNet,
     kineticEnergy, workByGravity, workByFriction,
+    efficiency: telEfficiency, vTheory, vActual,
   } = telemetry;
 
-  // ── State label + colour ───────────────────────────────────────────────────
+  const isDone = state === STATES.DONE || state === "Finished";
+  const isSliding = state === STATES.KINETIC;
+  const isStatic = state === STATES.STATIC;
+
+  // ── State label + color ───────────────────────────────────────────────────
   const stateLabel =
-    state === STATES.KINETIC ? "Kinetic — Sliding"
-    : state === STATES.STATIC ? "Static — At Rest"
-    : state === STATES.DONE   ? "Reached Bottom"
+    isSliding ? "Kinetic — Sliding"
+    : isStatic ? "Static — At Rest"
+    : isDone   ? "Reached Bottom ✓"
     : "Idle";
 
   const stateColor =
-    state === STATES.KINETIC ? CLR.gravity
-    : state === STATES.STATIC ? CLR.friction
-    : state === STATES.DONE   ? CLR.normal
+    isSliding ? CLR.accent
+    : isStatic ? CLR.friction
+    : isDone   ? CLR.neon
     : CLR.muted;
 
-  // ── Efficiency: ratio of KE gained to gravitational work done ─────────────
-  // η = KE / W_gravity  (1 = no friction loss, 0 = all energy lost)
-  const efficiency = workByGravity > 0
-    ? Math.min(100, (kineticEnergy / workByGravity) * 100)
-    : 0;
+  // ── Energy & Efficiency Calculations ─────────────────────────────────────
+  const efficiency = telEfficiency !== undefined
+    ? telEfficiency
+    : (workByGravity > 0 ? Math.min(100, Math.max(0, (kineticEnergy / workByGravity) * 100)) : 0);
 
-  // ── Theoretical terminal condition at bottom (v² = 2·a·d) for comparison ──
-  // Only show if block is sliding (a > 0)
-  const vTheory = acceleration > 0
-    ? Math.sqrt(2 * acceleration * Math.max(distance, 0.001))
-    : null;
+  const actualMaxSpeed = vActual !== undefined ? Math.max(maxSpeed, vActual) : maxSpeed;
+  const vIdeal = vTheory !== undefined ? vTheory : null;
 
   return (
     <div
-      className="rounded-xl border p-2.5 transition-all flex flex-col gap-2"
+      className="rounded-xl border p-3 transition-all flex flex-col gap-2.5 shadow-lg"
       style={{ background: CLR.panel, borderColor: CLR.border }}
     >
       {/* ── Header / Compact Bar ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-3 overflow-hidden flex-1 flex-wrap">
-          {/* Logo & title */}
           <div className="flex items-center gap-1.5 shrink-0 select-none">
-            <BarChart2 size={14} style={{ color: CLR.accent }} />
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: CLR.text }}>
-              Telemetry
+            <Activity size={15} style={{ color: CLR.accent }} />
+            <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: CLR.text }}>
+              Telemetry &amp; Dynamics
             </span>
           </div>
 
@@ -134,19 +129,19 @@ export default function TelemetryPanel({ telemetry, slipAngle, STATES }) {
                 className="flex flex-wrap items-center gap-1.5"
               >
                 <CompactMetric
-                  label="State"
-                  value={state === STATES.KINETIC ? "Sliding" : state === STATES.STATIC ? "Static" : state === STATES.DONE ? "Finished" : "Idle"}
+                  label="Status"
+                  value={stateLabel}
                   accent={stateColor}
                 />
-                <CompactMetric label="Speed" value={speed.toFixed(2)} unit="m/s" accent={CLR.accent} />
-                <CompactMetric label="Accel" value={acceleration.toFixed(2)} unit="m/s²" accent={CLR.accent} />
-                <CompactMetric label="Friction" value={fFriction.toFixed(1)} unit="N" accent={CLR.friction} />
                 <CompactMetric
-                  label="Net Force"
-                  value={fNet.toFixed(1)}
-                  unit="N"
-                  accent={fNet > 0.5 ? CLR.gravity : fNet < -0.5 ? CLR.normal : CLR.muted}
+                  label={isDone ? "Final Speed" : "Speed"}
+                  value={(isDone ? actualMaxSpeed : speed).toFixed(2)}
+                  unit="m/s"
+                  accent={CLR.accent}
                 />
+                <CompactMetric label="Accel" value={acceleration.toFixed(2)} unit="m/s²" accent={CLR.accent} />
+                <CompactMetric label="Net Force" value={fNet.toFixed(1)} unit="N" accent={fNet > 0.1 ? "#f47067" : CLR.muted} />
+                <CompactMetric label="Efficiency" value={`${efficiency.toFixed(0)}%`} accent={CLR.neon} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -175,7 +170,7 @@ export default function TelemetryPanel({ telemetry, slipAngle, STATES }) {
         </button>
       </div>
 
-      {/* ── Expanded Content ────────────────────────────────────────────────── */}
+      {/* ── 3 Primary Scannable Cards (Expanded) ────────────────────────────── */}
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
@@ -185,55 +180,163 @@ export default function TelemetryPanel({ telemetry, slipAngle, STATES }) {
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="pt-3 border-t flex flex-col gap-3 mt-1.5" style={{ borderColor: CLR.border }}>
-              {/* Row 1: Motion state */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Group title="Motion State" />
-                <TelCard label="State"        value={stateLabel}              accent={stateColor} wide />
-                <TelCard label="Speed"        value={speed.toFixed(2)}        unit="m/s"  accent={CLR.accent} />
-                <TelCard label="Max Speed ↑"  value={maxSpeed.toFixed(2)}     unit="m/s"  accent={CLR.neon} />
-                <TelCard label="Acceleration" value={acceleration.toFixed(3)} unit="m/s²" accent={CLR.accent} />
-                <TelCard label="Distance"     value={distance.toFixed(2)}     unit="m"    accent={CLR.muted} />
-                <TelCard label="Elapsed"      value={elapsed.toFixed(2)}      unit="s"    accent={CLR.muted} />
-              </div>
+            <div className="pt-3 border-t grid grid-cols-1 md:grid-cols-3 gap-3 mt-1" style={{ borderColor: CLR.border }}>
+              
+              {/* ── CARD 1: Motion & Kinematics ── */}
+              <div className="flex flex-col gap-2 rounded-xl p-3 border" style={{ background: "rgba(13,17,23,0.5)", borderColor: CLR.border }}>
+                <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: CLR.border }}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                    <Activity size={13} /> Motion &amp; Kinematics
+                  </span>
+                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full border" style={{ color: stateColor, borderColor: stateColor + "44", background: stateColor + "14" }}>
+                    {stateLabel}
+                  </span>
+                </div>
 
-              {/* Row 2: Forces */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Group title="Forces" />
-                <TelCard label="Weight (mg)"   value={fGravity.toFixed(1)}   unit="N" accent={CLR.gravity} />
-                <TelCard label="Normal (N)"    value={fNormal.toFixed(1)}    unit="N" accent={CLR.normal} />
-                <TelCard label="Friction (f)"  value={fFriction.toFixed(1)}  unit="N" accent={CLR.friction} />
-                <TelCard label="Net Force"     value={fNet.toFixed(1)}       unit="N" accent={
-                  fNet > 0.5 ? CLR.gravity : fNet < -0.5 ? CLR.normal : CLR.muted
-                } />
-              </div>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <MetricItem
+                    label="Acceleration (a)"
+                    value={acceleration.toFixed(3)}
+                    unit="m/s²"
+                    accent={CLR.accent}
+                  />
 
-              {/* Row 3: Energy & analysis */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Group title="Energy & Analysis" />
-                <TelCard label="Kinetic Energy"  value={kineticEnergy.toFixed(2)}   unit="J"  accent={CLR.accent} />
-                <TelCard label="Work by Gravity" value={workByGravity.toFixed(2)}   unit="J"  accent={CLR.normal} />
-                <TelCard label="Friction Heat"   value={workByFriction.toFixed(2)}  unit="J"  accent={CLR.friction} />
-                <TelCard
-                  label="Efficiency"
-                  value={`${efficiency.toFixed(1)}%`}
-                  accent={efficiency > 75 ? CLR.normal : efficiency > 40 ? CLR.friction : CLR.gravity}
-                />
-                <TelCard
-                  label="Slip Angle (θc)"
-                  value={slipAngle.toFixed(1)}
-                  unit="°"
-                  accent={CLR.friction}
-                />
-                {vTheory !== null && (
-                  <TelCard
-                    label="v (theory)"
-                    value={vTheory.toFixed(2)}
-                    unit="m/s"
+                  {/* Dynamic Speed Field: Highlights Final Speed when finished */}
+                  {isDone ? (
+                    <MetricItem
+                      label="FINAL SPEED (v_max)"
+                      value={actualMaxSpeed.toFixed(2)}
+                      unit="m/s"
+                      accent={CLR.neon}
+                      highlight
+                      subtitle="Terminal"
+                    />
+                  ) : (
+                    <MetricItem
+                      label="Current Speed (v)"
+                      value={speed.toFixed(2)}
+                      unit="m/s"
+                      accent={CLR.accent}
+                      subtitle={`Max: ${actualMaxSpeed.toFixed(2)}`}
+                    />
+                  )}
+
+                  <MetricItem
+                    label="Elapsed Time (t)"
+                    value={elapsed.toFixed(2)}
+                    unit="s"
                     accent={CLR.muted}
                   />
+
+                  <MetricItem
+                    label="Displacement (d)"
+                    value={distance.toFixed(2)}
+                    unit="m"
+                    accent={CLR.muted}
+                  />
+                </div>
+              </div>
+
+              {/* ── CARD 2: Force Dynamics ── */}
+              <div className="flex flex-col gap-2 rounded-xl p-3 border" style={{ background: "rgba(13,17,23,0.5)", borderColor: CLR.border }}>
+                <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: CLR.border }}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Zap size={13} /> Force Dynamics
+                  </span>
+                  <button
+                    onClick={() => setShowStaticForces(!showStaticForces)}
+                    className="text-[9px] font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+                  >
+                    <Info size={10} /> {showStaticForces ? "Hide mg & N" : "Show mg & N"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <MetricItem
+                    label="NET FORCE (F_net)"
+                    value={fNet.toFixed(1)}
+                    unit="N"
+                    accent={fNet > 0.1 ? "#f47067" : CLR.muted}
+                    highlight={fNet > 0.1}
+                    subtitle="Driver"
+                  />
+
+                  <MetricItem
+                    label="FRICTION (f_k)"
+                    value={fFriction.toFixed(1)}
+                    unit="N"
+                    accent="#e3b341"
+                    subtitle={isSliding ? "Kinetic" : "Static Bal."}
+                  />
+
+                  {/* Optional static intermediate forces (mg & N) */}
+                  {showStaticForces && (
+                    <>
+                      <MetricItem
+                        label="Weight (mg)"
+                        value={fGravity.toFixed(1)}
+                        unit="N"
+                        accent={CLR.muted}
+                      />
+                      <MetricItem
+                        label="Normal (N)"
+                        value={fNormal.toFixed(1)}
+                        unit="N"
+                        accent={CLR.muted}
+                      />
+                    </>
+                  )}
+                </div>
+                {!showStaticForces && (
+                  <p className="text-[9px] text-slate-400 mt-1 italic">
+                    💡 Gravity (mg) and Normal (N) vectors live-rendered on canvas.
+                  </p>
                 )}
               </div>
+
+              {/* ── CARD 3: Energy & Analysis ── */}
+              <div className="flex flex-col gap-2 rounded-xl p-3 border" style={{ background: "rgba(13,17,23,0.5)", borderColor: CLR.border }}>
+                <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: CLR.border }}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <Flame size={13} /> Energy &amp; Efficiency
+                  </span>
+                  <span className="text-[9px] font-mono font-bold text-emerald-400">
+                    {efficiency.toFixed(1)}% Eff
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <MetricItem
+                    label="Kinetic Energy (E_k)"
+                    value={kineticEnergy.toFixed(2)}
+                    unit="J"
+                    accent={CLR.accent}
+                  />
+
+                  <MetricItem
+                    label="Friction Heat (Q_f)"
+                    value={workByFriction.toFixed(2)}
+                    unit="J"
+                    accent="#e3b341"
+                  />
+
+                  <MetricItem
+                    label="Ideal Speed (Frictionless)"
+                    value={vIdeal !== null && vIdeal !== undefined ? vIdeal.toFixed(2) : "—"}
+                    unit="m/s"
+                    accent={CLR.muted}
+                    subtitle="Theory"
+                  />
+
+                  <MetricItem
+                    label="EFFICIENCY (%)"
+                    value={`${efficiency.toFixed(1)}%`}
+                    accent={efficiency > 75 ? CLR.neon : efficiency > 40 ? "#e3b341" : "#f47067"}
+                    highlight
+                  />
+                </div>
+              </div>
+
             </div>
           </motion.div>
         )}
@@ -241,3 +344,4 @@ export default function TelemetryPanel({ telemetry, slipAngle, STATES }) {
     </div>
   );
 }
+

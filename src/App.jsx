@@ -28,6 +28,7 @@ import FrictionSimulator from './Components/Physics/FrictionSimulator/FrictionSi
 import SoundWaveTank from './Components/Physics/SoundWave/SoundWaveTank'
 import PhysicsHub from './Components/Physics/PhysicsHub/PhysicsHub'
 import BioHub from './Components/Biology/BioHub'
+import BiologyModule from './Components/Biology/BiologyModule'
 
 function App() {
   return (
@@ -73,6 +74,7 @@ function App() {
 
         {/* Biology */}
         <Route path='/biology/hub' element={<BioHub />}/>
+        <Route path='/biology/diagram-hub' element={<BiologyModule />}/>
 
         {/* Hero */}
         <Route path='/hero' element={<Hero />} />

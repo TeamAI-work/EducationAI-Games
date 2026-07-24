@@ -1,17 +1,23 @@
-# EducationAI-Games 🎓🧪✨
+# EducationAI-Games 🎓🧪🔬✨
 
-EducationAI-Games is a premium, interactive, AI-powered learning platform designed for students from Grade 1 to High School. It blends gamified learning with advanced Artificial Intelligence to teach core academic subjects—ranging from foundational math and literacy for early grades to complex geometry, fractions, and an AI-powered Virtual Chemistry Laboratory.
+![Version](https://img.shields.io/badge/version-1.2.0-emerald.svg)
+![React](https://img.shields.io/badge/React-19.2-61dafb.svg)
+![Vite](https://img.shields.io/badge/Vite-8.0-646cff.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.138-009688.svg)
+
+EducationAI-Games is a premium, interactive, AI-powered STEM learning platform designed for students from Grade 1 to High School (NCERT Class 9 & 10). It blends gamified learning with advanced Artificial Intelligence and high-fidelity HTML5 visual physics, chemistry, and biology simulators to teach core academic subjects—ranging from foundational math and literacy for early grades to complex geometry, AI chemical synthesis, interactive physics laboratories, and interactive NCERT anatomical diagram hubs.
 
 ---
 
 ## 🏗️ Project Architecture
 
-The application is structured as a monorepo with a high-fidelity React frontend and a robust FastAPI backend for AI chemical simulations:
+The application is structured as a monorepo featuring a high-performance React 19 frontend and a FastAPI backend for AI chemical simulations:
 
 ```mermaid
 graph TD
-    A[React Frontend] -->|HTTP POST /craft_compound| B[FastAPI Backend]
+    A[React Frontend v1.2.0] -->|HTTP POST /craft_compound| B[FastAPI Backend]
     A -->|HTTP POST /free_react| B
+    A -->|NCERT Registry & LocalStorage| E[Biology & Physics Hubs]
     B -->|LangChain Core| C[Groq LLM Client]
     C -->|llama-3.3-70b-versatile| D[Structured JSON Response]
     D -->|Pydantic Models| B
@@ -19,7 +25,7 @@ graph TD
 ```
 
 - **Frontend**: Built using [React 19](file:///d:/GMS Work/EducationAI-Games/package.json#L17) & [Vite 8](file:///d:/GMS Work/EducationAI-Games/package.json#L31), styled with [Tailwind CSS v4](file:///d:/GMS Work/EducationAI-Games/package.json#L14) and enhanced with fluid micro-animations via [Framer Motion](file:///d:/GMS Work/EducationAI-Games/package.json#L15).
-- **Backend**: Built with [FastAPI](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L9), powered by [LangChain](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L10) and [Groq LLM API](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L11) (`llama-3.3-70b-versatile`) to generate dynamic, educational chemistry feedback.
+- **Backend**: Built with [FastAPI](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L9), powered by [LangChain](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L10) and [Groq LLM API](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml#L11) (`llama-3.3-70b-versatile`) to generate dynamic, educational chemistry feedback and reaction analyses.
 
 ---
 
@@ -53,67 +59,85 @@ The games are organized by target grade level in [src/App.jsx](file:///d:/GMS Wo
 
 ---
 
-## 🧪 Interactive Chemistry Suite
+## 🧬 Interactive Biology Explorer & NCERT Suite (NEW in v1.2.0)
 
-The Chemistry platform is built to engage high school students in advanced scientific experiments:
+The Biology platform ([BioHub.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/BioHub.jsx) & [BiologyModule.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/BiologyModule.jsx)) offers a comprehensive, curriculum-aligned interactive laboratory for NCERT Class 9 & Class 10 Biology:
+
+1.  **NCERT Interactive Diagram Hub & Quiz Engine** ([NCERTDiagramHub.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/components/NCERTDiagramHub.jsx) & [biologyRegistry.js](file:///d:/GMS Work/EducationAI-Games/src/data/biologyRegistry.js)):
+    *   **Unit 1 — The Fundamental Unit of Life**: Interactive anatomical breakdown of Animal Cell, Plant Cell, Mitosis (Equational Division), Meiosis I (Reductional Division), and Meiosis II (Equational Division).
+    *   **Unit 2 — Tissues**: High-resolution diagrams covering Meristematic Tissues (Apical, Intercalary, Lateral), Permanent Plant Tissues (Parenchyma, Collenchyma, Sclerenchyma, Xylem, Phloem), Epithelial Tissues (Stratified Squamous, Ciliated Columnar, Glandular), Muscular Tissues (Striated, Smooth, Cardiac), Connective Tissues (Blood, Bone, Cartilage, Areolar, Adipose), and Nervous Tissue Architecture (Cyton, Dendrites, Axon, Synapse).
+    *   **Unit 3 — Life Processes**: Interactive systems covering Human Digestive System (Alimentary Canal), Respiration, Circulation & Heart, and Excretion & Nephron structure.
+    *   **Dual Interactive Modes**:
+        *   **Study Mode**: Hover/click pin-point anatomical targets to inspect NCERT definitions, key physiological functions, and high-yield CBSE exam tips via the right drawer ([InfoCard.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/InfoCard.jsx)).
+        *   **Memory & Spatial Recall Test Mode**: Gamified quizzing that prompts students to identify structures on un-labeled diagrams with live scoring, accuracy percentages, and persistent topic mastery tracked via `localStorage`.
+2.  **Cell Sandbox & Virtual Organelle Simulator** ([CellSandbox.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/components/CellSandbox.jsx), [InteractiveAnimalCell.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/InteractiveAnimalCell.jsx), [InteractivePlantCell.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Biology/InteractivePlantCell.jsx)):
+    *   Zoomable, high-fidelity canvas renderings of eukaryotic plant and animal cell structures.
+    *   Interactive organelle spotlighting (Nucleus, Nucleolus, Rough/Smooth ER, Mitochondria, Golgi Apparatus, Lysosomes, Chloroplasts, Vacuoles, Centrioles).
+    *   Side-by-side comparative analysis of structural differences between plant and animal cells.
+
+---
+
+## 🧪 Interactive Chemistry Suite & Educator Tooling
+
+The Chemistry platform provides high school students with advanced chemical synthesis tools alongside teacher administration features:
 
 1.  **Interactive Periodic Table** ([PeriodicTable.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Chemistry/PeriodicTable.jsx)):
-    *   Beautiful custom color schemes mapping chemical categories (Halogens, Transition Metals, Noble Gases, etc.).
+    *   Custom color schemes mapping chemical categories (Halogens, Transition Metals, Noble Gases, etc.).
     *   Contains the **Atomic Model Simulator** ([AtomicModelSimulator.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Chemistry/AtomicModelSimulator.jsx)), providing real-time rendering of electron shells (Bohr models) with orbiting electrons.
 2.  **Chemistry AI Virtual Lab** ([Lab.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Chemistry/Lab/Lab.jsx)):
-    *   **Compound Crafter Mode**: Pick items from the periodic table, select an attempted chemical formula, and press "Craft". The FastAPI server processes the input and returns structured compound details (IUPAC name, balanced equation, bonding types, molar mass, safety hazards, real-world uses, and educational fun facts).
-    *   **Free Lab Mode**: Combine any substances (such as `Na`, `Cl2`, `H2O`, `HCl`) in a digital beaker. The AI determines whether a chemical reaction occurs, outputting sensory descriptions (colour changes, bubble releases, precipitation, flames), reaction types, energy levels (exothermic/endothermic), and safe handling information.
+    *   **Compound Crafter Mode**: Select elements from the periodic table, specify target chemical formulas, and press "Craft". The FastAPI server computes IUPAC names, balanced equations, bonding types, molar mass, safety hazards, real-world uses, and educational fun facts.
+    *   **Free Lab Mode**: Combine chemical substances (such as `Na`, `Cl2`, `H2O`, `HCl`) in a digital beaker. The AI determines reaction feasibility, sensory descriptions (color shifts, gas release, precipitation, flame), reaction thermodynamics, and handling safety.
+3.  **Teacher Custom Question Builder** ([TeacherQuestionBuilder.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Chemistry/Lab/TeacherQuestionBuilder.jsx) — **NEW in v1.2.0**):
+    *   Educator portal accessible via `/chemistry/lab/teacher`.
+    *   Allows teachers to create custom synthesis challenges, set required reactants, specify hints, and save custom lab assignments directly to local storage for student practice.
 
 ---
 
 ## ⚡ Interactive Physics Suite
 
-The Physics platform is a high-fidelity laboratory environment mapped to Grade 9 & 10 (NCERT syllabus) physics concepts. Managed through the central dashboard **Physics Hub** ([PhysicsHub.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/PhysicsHub.jsx)), it offers five immersive physics environments:
+The Physics platform is a laboratory environment mapped to Grade 9 & 10 (NCERT syllabus) concepts. Managed through the central dashboard **Physics Hub** ([PhysicsHub.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/PhysicsHub.jsx)):
 
 1.  **Motion Runway (Projectile Motion Lab)** ([ProjectileMotion.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/ProjectileMotion/ProjectileMotion.jsx)):
-    *   **Interactive Parameters**: Adjust initial launch speed, launch angle, elevation height, and projectile mass.
-    *   **Vector Overlays**: Toggle live visualization of total velocity vector, horizontal ($v_x$) and vertical ($v_y$) component vectors, and the gravity vector.
-    *   **Environment Presets**: Instantly switch gravity to simulate environments on the Earth, Moon, Mars, Jupiter, or specify custom gravity.
-    *   **Live Telemetry**: Tracks trajectory height, range, flight time, and real-time kinetic vs. potential energy distribution.
+    *   **Interactive Parameters**: Adjust launch speed, angle, elevation height, and projectile mass.
+    *   **Vector Overlays & Telemetry**: Live rendering of total velocity vector, horizontal ($v_x$) and vertical ($v_y$) components, gravity vectors, and real-time kinetic vs. potential energy distribution.
+    *   **Environment Presets**: Instant switching between Earth, Moon, Mars, Jupiter, or custom gravity.
 2.  **Friction Slide (Friction Incline Lab)** ([FrictionSimulator.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/FrictionSimulator/FrictionSimulator.jsx)):
-    *   **Incline Mechanics**: Adjust block mass, slope angle, and applied push force.
-    *   **Force Vector Diagram**: Displays real-time force vectors representing Gravitational Force ($F_g$), Normal Force ($F_N$), Friction Force ($F_f$), and Applied Force ($F_a$).
-    *   **Coefficient Presets**: Custom adjust static friction ($\mu_s$) and kinetic friction ($\mu_k$) coefficients or apply presets (Ice, Wood, Metal, Rubber).
-    *   **Motion Solver**: Simulates transition thresholds from rest (static equilibrium) to sliding motion (kinetic phase).
+    *   **Incline Mechanics & Vector Diagrams**: Adjust block mass, slope angle, push force, and observe real-time vectors ($F_g, F_N, F_f, F_a$).
+    *   **Coefficient Presets**: Custom static ($\mu_s$) and kinetic ($\mu_k$) friction coefficients with material presets (Ice, Wood, Metal, Rubber).
 3.  **Sound Tank (Sound Wave Tank)** ([SoundWaveTank.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/SoundWave/SoundWaveTank.jsx)):
-    *   **Wave Emitter**: Control frequency, amplitude, and initial phase to see sound waves propagate.
-    *   **Medium & Temperature Physics**: Speed of sound is dynamically computed based on selected propagation medium (Air, Water, Steel) and ambient temperature.
-    *   **Reflection & Phase Shift**: Toggle between a *Rigid Boundary* (fixed end, causing phase inversion reflection) and a *Free Boundary* (loose end, reflecting without phase reversal).
-    *   **Dual View**: Render either the wave graph (pressure amplitude vs. distance) or a particle simulation displaying compressions and rarefactions.
+    *   **Wave Emitter & Mediums**: Control frequency, amplitude, and initial phase. Medium speeds adjust dynamically (Air, Water, Steel, and temperature variations).
+    *   **Boundaries & Particle Simulation**: Toggle between Rigid (phase inversion) and Free boundaries, with dual views for pressure graph and particle compression/rarefaction.
 4.  **Circuit Sandbox (Circuit Builder)** ([CircuitBuilder.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/components/CircuitBuilder.jsx)):
-    *   **Interactive Grid Sandbox**: Drag, place, and connect batteries, switches, resistors, light bulbs, wires, and fuses on a grid canvas.
-    *   **Nodal Solver**: Computes voltages, currents, and power drops across all nodes in real time using Kirchhoff's laws.
-    *   **Interactive Instruments**: Drag the Red/Black Voltmeter probes to any node junction to measure potential differences.
-    *   **Safety Simulations**: Features interactive fuses with adjustable current ratings that physically melt and break the circuit if overloaded.
-    *   **Guided Missions**: Step-by-step challenges covering Ohm's Law, Series & Parallel configs, Short Circuits, and Multi-Loop bridge circuits.
+    *   **Interactive Grid Sandbox**: Drag, place, and connect batteries, switches, resistors, light bulbs, wires, and fuses.
+    *   **Nodal Solver & Voltmeter**: Computes voltages, currents, and power drops using Kirchhoff's laws. Interactive Red/Black Voltmeter probes measure potential differences across junctions.
+    *   **Fuse Safety & Guided Missions**: Interactive fuses melt under overload; guided missions cover Ohm's Law and series/parallel configurations.
 5.  **Optics Lab (Mirror & Eye Lab)** ([OpticsMirrorLab.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/PhysicsHub/OpticsMirrorLab.jsx)):
-    *   **Ray Bench**: Place Concave/Convex Lenses and Mirrors, adjust focal lengths, object distances, and heights. Traces three physical principal rays (parallel, focal, center) alongside dashed virtual extensions. Calculates signed distances $u, v$, magnification $m$, and image characteristics.
-    *   **Bending Light**: Verify Snell's Law by adjusting refractive indices $n_1$ and $n_2$ of two adjacent media. Tracks incident, reflected, and refracted angles, displaying an interactive protractor and simulating Total Internal Reflection (TIR).
-    *   **Eye Clinic**: Diagnose Myopia and Hypermetropia defects. Apply corrective spectacles (Concave/Convex) and modify diopter power ($D$) in real-time until the light rays focus cleanly onto the retina.
+    *   **Ray Bench & Snell's Law**: Place Concave/Convex Lenses and Mirrors, adjust focal lengths, trace principal rays, verify Snell's Law, and simulate Total Internal Reflection (TIR).
+    *   **Eye Clinic**: Diagnose Myopia and Hypermetropia defects, applying corrective lenses with real-time diopter power adjustments ($D$).
+6.  **Formula Overlays & Theme Support** ([FormulaOverlay.jsx](file:///d:/GMS Work/EducationAI-Games/src/Components/Physics/FormulaOverlay.jsx) — **NEW in v1.2.0**):
+    *   Real-time formula display overlaying live simulation canvases.
+    *   Integrated dark/light theme switching across the Physics Hub dashboard.
 
 ---
 
 ## ⚙️ Tech Stack & Requirements
 
 ### Frontend Dependencies ([package.json](file:///d:/GMS Work/EducationAI-Games/package.json))
-- **React 19 & React DOM 19**
-- **Vite 8** (Dev server and bundler)
-- **Tailwind CSS v4** (Modern utility-first CSS engine)
-- **Framer Motion** (Spring physics and layout transitions)
-- **Lucide React & Iconify** (Icons library)
-- **React Router Dom v7** (Client-side routing)
+- **React 19 & React DOM 19** (`^19.2.6`)
+- **Vite 8** (`^8.0.12`)
+- **Tailwind CSS v4** (`^4.3.0`)
+- **Framer Motion** (`^12.40.0`)
+- **Lucide React & Iconify** (`^1.17.0`, `^6.0.2`)
+- **React Router Dom v7** (`^7.17.0`)
+- **Project Version**: `1.2.0`
 
 ### Backend Dependencies ([pyproject.toml](file:///d:/GMS Work/EducationAI-Games/Backend/pyproject.toml))
-- **FastAPI** (High performance ASGI server framework)
-- **LangChain Core** (LLM orchestrator)
-- **LangChain Groq** (Groq cloud client)
-- **Python Dotenv** (Environment variables configuration reader)
+- **FastAPI** (`>=0.138.1`)
+- **LangChain Core** (`>=1.4.8`)
+- **LangChain Groq** (`>=1.1.3`)
+- **Python Dotenv** (`>=0.9.9`)
 - **Requires Python**: `>=3.14`
+- **Backend Version**: `1.2.0`
 
 ---
 
@@ -153,6 +177,40 @@ The application dashboard is available at: `http://localhost:5173`
 
 ---
 
+## 🗺️ Route Directory Summary
+
+| Route | Component | Subject / Grade | Description |
+| :--- | :--- | :--- | :--- |
+| `/` | `HeroHighlight` | Portal | Main Application Landing Page |
+| `/games` | `Land` | Portal | Interactive Grade Level Dashboard |
+| `/grade1/count` | `Count` | Grade 1 Math | Apple Counting Game |
+| `/grade1/tracing` | `Tracing` | Grade 1 Literacy | Letter/Number Tracing Canvas |
+| `/grade2/crossword` | `Crossword` | Grade 2 Language | Scrambled Word Crossword |
+| `/grade2/sentence-strip` | `SentenceStrip` | Grade 2 Literacy | Sentence Ordering Puzzles |
+| `/grade2/hopper` | `Hopper` | Grade 2 Math | Frog Number Line Math |
+| `/grade2/distance` | `Distance` | Grade 2 Math | Ruler Distance Measurement |
+| `/grade3/sentence-builder` | `SentenceBuilder` | Grade 3 Language | Parts of Speech Builder |
+| `/grade3/missing-word` | `MissingWord` | Grade 3 Reading | Context Clues Fill-in-the-Blank |
+| `/grade3/area-builder` | `AreaBuilder` | Grade 3 Geometry | Spatial Area Block Builder |
+| `/grade3/grid-splitter` | `GridSplitter` | Grade 3 Fractions | Grid Division Fractions |
+| `/grade3/missing-side` | `MissingSide` | Grade 3 Geometry | Polygon Perimeter Solver |
+| `/grade4/picture-match` | `PictureMatch` | Grade 4 Vocabulary | Visual Flashcard Match |
+| `/grade4/sequencing-tiles` | `SequencingTiles` | Grade 4 Logic | Instruction Flow Ordering |
+| `/grade4/fraction-pie` | `FractionPie` | Grade 4 Fractions | Pie Slicing Equivalent Fractions |
+| `/grade4/fraction-compare` | `FractionCompare` | Grade 4 Fractions | Side-by-side Fraction Comparer |
+| `/grade4/number-arrange` | `NumberArrange` | Grade 4 Math | Decimal & Integer Sorting |
+| `/chemistry/periodic-table` | `PeriodicTable` | High School Chemistry | Interactive Periodic Table & Bohr Model |
+| `/chemistry/lab` | `Lab` | High School Chemistry | AI Virtual Lab (Compound Crafter & Free Lab) |
+| `/chemistry/lab/teacher` | `TeacherQuestionBuilder` | High School Chemistry | Teacher Custom Reaction Challenge Builder |
+| `/physics/hub` | `PhysicsHub` | High School Physics | Unified Physics Suite Dashboard |
+| `/physics/lab` | `PhysicsLab` | High School Physics | Projectile Motion Runway |
+| `/physics/friction` | `FrictionSimulator` | High School Physics | Friction Incline Slide |
+| `/physics/sound` | `SoundWaveTank` | High School Physics | Sound Wave Propagation Tank |
+| `/biology/hub` | `BioHub` | NCERT Bio Class 9–10 | Bio Hub (Diagrams & Cell Sandbox) |
+| `/biology/diagram-hub` | `BiologyModule` | NCERT Bio Class 9–10 | Interactive Anatomical Diagram & Quiz Hub |
+
+---
+
 ## 🔒 Security Best Practices
 *   **Environment Ignored**: The `.env` variables containing secrets like `GROQ_API_KEY` are blocked in Git via the project [.gitignore](file:///d:/GMS Work/EducationAI-Games/.gitignore).
-*   **Strict CORS Policy**: Staged in [main.py](file:///d:/GMS Work/EducationAI-Games/Backend/main.py#L14-L20) to only accept requests originating from the authorized frontend host (`http://localhost:5173`).
+*   **Strict CORS Policy**: Staged in [main.py](file:///d:/GMS Work/EducationAI-Games/Backend/main.py#L14-L20) to only accept requests originating from authorized frontend hosts (`http://localhost:5173`).

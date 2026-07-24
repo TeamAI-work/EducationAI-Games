@@ -105,27 +105,40 @@ export function drawTankBorder(ctx, tankLeft, tankTop, tankW, tankH) {
  * Each column x maps to a wave displacement y(x,t) which nudges the dots.
  * @param {Float32Array} dispArr  – per-column displacement (−1 to 1 normalised)
  */
+// ─── Particle grid ────────────────────────────────────────────────────────────
+/**
+ * Draws PARTICLE_COLS × PARTICLE_ROWS molecules inside the tank.
+ * Synchronized 1:1 vertically with the sine wave graph below.
+ * @param {Float32Array} dispArr – per-column displacement (−1 to 1 normalised)
+ */
 export function drawParticles(ctx, tankLeft, tankTop, tankW, tankH, dispArr) {
-  const colW   = tankW / PARTICLE_COLS;
+  const step   = tankW / (PARTICLE_COLS - 1);
   const rowH   = tankH / (PARTICLE_ROWS + 1);
-  const radius = 2.2;
+  const radius = 2.4;
 
   ctx.save();
   for (let col = 0; col < PARTICLE_COLS; col++) {
     const disp     = dispArr[col];             // -1 to 1
     const dispPx   = disp * MAX_DISP_PX;
-    const pressure = Math.abs(disp);           // 0-1 for colour blend
-    const baseX    = tankLeft + (col + 0.5) * colW + dispPx;
+    // Calculate local compression gradient from neighboring column difference
+    const prevDisp = col > 0 ? dispArr[col - 1] : disp;
+    const nextDisp = col < PARTICLE_COLS - 1 ? dispArr[col + 1] : disp;
+    const compression = -(nextDisp - prevDisp) * 0.5; // positive = compression, negative = rarefaction
 
-    const alpha = 0.2 + pressure * 0.5;
-    ctx.fillStyle = pressure > 0.55
-      ? `rgba(0,229,255,${alpha})`
-      : `rgba(240,246,252,${0.18 + pressure * 0.25})`;
+    // Exact 1:1 X-coordinate matching the wave graph col position
+    const baseX = tankLeft + col * step + dispPx;
+
+    // Color particles: Cyan for compression peaks, Amber/White for rarefactions
+    const alpha = Math.min(0.95, Math.max(0.2, 0.4 + compression * 0.5));
+    ctx.fillStyle = compression > 0.1
+      ? `rgba(0, 229, 255, ${alpha})`
+      : compression < -0.1
+      ? `rgba(227, 179, 65, ${alpha * 0.7})`
+      : `rgba(240, 246, 252, ${0.3 + Math.abs(disp) * 0.2})`;
 
     for (let row = 0; row < PARTICLE_ROWS; row++) {
       const baseY = tankTop + (row + 1) * rowH;
-      // Small stagger per row for realism
-      const stagger = ((row % 2) * 0.5 - 0.25) * colW;
+      const stagger = ((row % 2) * 0.5 - 0.25) * step;
       ctx.beginPath();
       ctx.arc(baseX + stagger, baseY, radius, 0, Math.PI * 2);
       ctx.fill();
@@ -134,9 +147,9 @@ export function drawParticles(ctx, tankLeft, tankTop, tankW, tankH, dispArr) {
   ctx.restore();
 }
 
-// ─── Wave graph (bottom panel) ────────────────────────────────────────────────
+// ─── Wave graph (bottom panel with real-world spatial ruler) ──────────────────
 /**
- * Draws the displacement vs distance sine trace.
+ * Draws the displacement vs distance sine trace with dynamic X-axis spatial ticks.
  * @param {Float32Array} dispArr
  * @param {Float32Array|null} targetArr   – target silhouette for Mode 1
  * @param {Float32Array|null} noiseArr    – noise wave for Mode 2
@@ -148,9 +161,9 @@ export function drawWaveGraph(ctx, gLeft, gTop, gW, gH, dispArr, targetArr, nois
   ctx.fillStyle = CLR.bg;
   ctx.fillRect(gLeft, gTop, gW, gH);
 
-  // Centre axis
+  // Centre baseline axis
   ctx.save();
-  ctx.strokeStyle = CLR.border;
+  ctx.strokeStyle = "rgba(88,166,255,0.3)";
   ctx.lineWidth   = 1;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
@@ -159,17 +172,17 @@ export function drawWaveGraph(ctx, gLeft, gTop, gW, gH, dispArr, targetArr, nois
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Y-axis label
+  // Y-axis labels & Direction
   ctx.fillStyle = CLR.muted;
   ctx.font      = "9px monospace";
   ctx.textAlign = "left";
-  ctx.fillText("y", gLeft + 4, gTop + 12);
-  ctx.fillText("0", gLeft + 4, midY + 3);
+  ctx.fillText("Displacement (y)", gLeft + 6, gTop + 12);
+  ctx.fillText("0", gLeft + 6, midY - 3);
   ctx.textAlign = "right";
-  ctx.fillText("x →", gLeft + gW - 4, gTop + 12);
+  ctx.fillText("Distance (x) →", gLeft + gW - 6, gTop + 12);
   ctx.restore();
 
-  const ampPx = (gH / 2) * 0.82;
+  const ampPx = (gH / 2) * 0.78;
   const step  = gW / (dispArr.length - 1);
 
   // Target silhouette (Mode 1 — dashed amber)
@@ -209,9 +222,9 @@ export function drawWaveGraph(ctx, gLeft, gTop, gW, gH, dispArr, targetArr, nois
   // Live user wave — neon cyan with glow
   ctx.save();
   ctx.strokeStyle = CLR.wave;
-  ctx.lineWidth   = 2.2;
+  ctx.lineWidth   = 2.4;
   ctx.shadowColor = CLR.wave;
-  ctx.shadowBlur  = 8;
+  ctx.shadowBlur  = 10;
   ctx.lineJoin    = "round";
   ctx.beginPath();
   for (let i = 0; i < dispArr.length; i++) {
@@ -230,12 +243,60 @@ export function drawWaveGraph(ctx, gLeft, gTop, gW, gH, dispArr, targetArr, nois
   ctx.restore();
 }
 
-// ─── Graph axis labels ────────────────────────────────────────────────────────
-export function drawGraphLabels(ctx, gLeft, gTop, gW, gH, wavelength, v) {
+// ─── Dynamic X-Axis Spatial Ruler Ticks & Spatial Span Readout ───────────────
+export function drawGraphLabels(ctx, gLeft, gTop, gW, gH, wavelength, v, freq = 3.6) {
   ctx.save();
+  
+  // Real-World Spatial Axis Scaling (X-Axis):
+  // Canvas Spatial Width D = Visible Cycles × λ
+  const visibleCycles = Math.max(1, freq * 1.5);
+  const totalSpatialSpanMeters = visibleCycles * wavelength;
+
+  const midY = gTop + gH / 2;
+  const numTicks = 6;
+  const stepPx = gW / (numTicks - 1);
+  const stepDist = totalSpatialSpanMeters / (numTicks - 1);
+
+  // Render horizontal spatial tick marks along baseline
+  ctx.strokeStyle = "rgba(139,148,158,0.4)";
+  ctx.lineWidth = 1;
   ctx.fillStyle = CLR.muted;
-  ctx.font      = "9px monospace";
+  ctx.font = "9px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  for (let i = 0; i < numTicks; i++) {
+    const x = gLeft + i * stepPx;
+    const distVal = i * stepDist;
+
+    ctx.beginPath();
+    ctx.moveTo(x, midY - 4);
+    ctx.lineTo(x, midY + 4);
+    ctx.stroke();
+
+    let distLabel = "";
+    if (distVal >= 1000) {
+      distLabel = `${(distVal / 1000).toFixed(1)}km`;
+    } else if (distVal >= 1) {
+      distLabel = `${distVal.toFixed(1)}m`;
+    } else {
+      distLabel = `${(distVal * 100).toFixed(0)}cm`;
+    }
+
+    if (i > 0 && i < numTicks - 1) {
+      ctx.fillText(distLabel, x, midY + 6);
+    }
+  }
+
+  // Right-aligned Spatial Readout Summary Badge
+  ctx.fillStyle = CLR.wave;
+  ctx.font      = "bold 10px Inter, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(`λ = ${wavelength.toFixed(2)} m   v = ${v} m/s`, gLeft + gW - 6, gTop + gH - 5);
+  ctx.fillText(
+    `Span D = ${totalSpatialSpanMeters.toFixed(1)}m   |   λ = ${wavelength.toFixed(2)}m   |   v = ${v.toFixed(0)}m/s`,
+    gLeft + gW - 6,
+    gTop + gH - 6
+  );
+
   ctx.restore();
 }

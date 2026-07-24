@@ -101,13 +101,13 @@ function applyTheme(isDark) {
   frictionCLR.rampEdge = isDark ? "#30363d" : "#94a3b8";
   frictionCLR.grid = isDark ? "rgba(48,54,61,0.6)" : "rgba(203,213,225,0.7)";
 
-  physicsCLR.bg = isDark ? "#0d1117" : "#f8fafc";
-  physicsCLR.panel = isDark ? "#161b22" : "#ffffff";
+  physicsCLR.bg = isDark ? "#0d1117" : "#ffffff";
+  physicsCLR.panel = isDark ? "#161b22" : "#f8fafc";
   physicsCLR.border = isDark ? "#30363d" : "#cbd5e1";
   physicsCLR.text = isDark ? "#e6edf3" : "#0f172a";
   physicsCLR.muted = isDark ? "#8b949e" : "#475569";
-  physicsCLR.grid = isDark ? "rgba(48,54,61,0.9)" : "rgba(203,213,225,0.7)";
-  physicsCLR.ground = isDark ? "#30363d" : "#94a3b8";
+  physicsCLR.grid = isDark ? "rgba(48,54,61,0.9)" : "rgba(203,213,225,0.75)";
+  physicsCLR.ground = isDark ? "#30363d" : "#475569";
 
   soundCLR.bg = isDark ? "#0d1117" : "#f8fafc";
   soundCLR.panel = isDark ? "#161b22" : "#ffffff";

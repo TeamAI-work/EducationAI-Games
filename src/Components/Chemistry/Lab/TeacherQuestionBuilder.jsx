@@ -499,14 +499,14 @@ export default function TeacherQuestionBuilder() {
   const validCount = questions.filter(q => q.question.trim() && q.correctReactants.length > 0).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-violet-50/30"
+    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-white to-violet-50/30"
       style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <motion.header
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="shrink-0 bg-white border-b border-gray-200 shadow-sm z-30"
+        className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm"
       >
         <div className="px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -540,20 +540,6 @@ export default function TeacherQuestionBuilder() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600"
             >
               <Eye size={13} /> Preview
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={handleSave}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-all"
-              style={{
-                background: saved
-                  ? "linear-gradient(135deg, #10b981, #059669)"
-                  : "linear-gradient(135deg, #7c3aed, #6366f1)",
-              }}
-            >
-              {saved ? <CheckCircle2 size={13} /> : <Save size={13} />}
-              {saved ? "Saved!" : "Save Questions"}
             </motion.button>
           </div>
         </div>
